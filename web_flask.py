@@ -337,16 +337,19 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB límite
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Cargar modelo YOLO
+# Cargar modelo YOLO (descarga automática)
 print("📥 Cargando modelo YOLO11 Pose...")
 try:
-    modelo_yolo = YOLO('yolo11x-pose.pt')
+    # Usar el modelo más liviano (descarga ~40MB)
+    modelo_yolo = YOLO('yolo11n-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
     modelo_yolo.overrides['iou'] = 0.6
     modelo_yolo.overrides['max_det'] = 1
-    print("✅ Modelo YOLO11x-pose cargado")
-except:
-    modelo_yolo = YOLO('yolo11m-pose.pt')
-    print("✅ Modelo YOLO11m-pose cargado")
+    print("✅ Modelo YOLO11n-pose cargado correctamente")
+except Exception as e:
+    print(f"❌ Error cargando modelo: {e}")
+    print("⚠️ El modelo se descargará automáticamente en el primer uso")
+    modelo_yolo = YOLO('yolo11n-pose.pt')
 
 
 def allowed_file(filename):
