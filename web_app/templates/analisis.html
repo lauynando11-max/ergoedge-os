@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.8; }
+    }
+    
+    .gradient-bg-page {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        min-height: 100vh;
+        padding: 4rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .gradient-bg-page::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.15), transparent 50%);
+        pointer-events: none;
+    }
+    
+    .gradient-bg-page::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1), transparent 50%);
+        pointer-events: none;
+    }
+    
+    .glass-card-dark {
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+        margin-top: 2.5rem;
+    }
+    
+    .card-option {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .card-option:hover {
+        transform: translateY(-5px);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .text-gradient {
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    
+    .animate-float-slow {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .icon-bg {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+</style>
+
+<div class="gradient-bg-page">
+    <div class="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style="pointer-events: none;">
+        <div class="position-absolute" style="top: 10%; left: 5%; width: 300px; height: 300px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(50px); animation: pulse 8s ease-in-out infinite;"></div>
+        <div class="position-absolute" style="bottom: 10%; right: 5%; width: 400px; height: 400px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(60px); animation: pulse 6s ease-in-out infinite reverse;"></div>
+        <div class="position-absolute" style="top: 50%; left: 50%; width: 250px; height: 250px; background: rgba(255,255,255,0.15); border-radius: 50%; filter: blur(40px);"></div>
+    </div>
+    
+    <div class="container position-relative" style="z-index: 2;">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="glass-card-dark animate-float-slow">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="icon-bg mb-3">
+                                <i class="fas fa-chart-line fa-2x text-gradient"></i>
+                            </div>
+                            <h2 class="fw-bold text-gradient" data-i18n="analisis.title">Nuevo Análisis Ergonómico</h2>
+                            <p class="text-white-50" data-i18n="analisis.subtitle">Seleccione el método de evaluación</p>
+                        </div>
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <a href="/video" class="text-decoration-none">
+                                    <div class="card-option text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fas fa-video fa-3x text-gradient"></i>
+                                        </div>
+                                        <h5 class="text-white mb-2" data-i18n="analisis.opcion_video_titulo">Video / Foto</h5>
+                                        <p class="text-white-50 small" data-i18n="analisis.opcion_video_desc">Para OWAS, RULA, REBA</p>
+                                        <span class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);" data-i18n="analisis.opcion_video_badge">Disponible</span>
+                                    </div>
+                                </a>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <a href="/rosa" class="text-decoration-none">
+                                    <div class="card-option text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fas fa-computer fa-3x text-gradient"></i>
+                                        </div>
+                                        <h5 class="text-white mb-2" data-i18n="analisis.opcion_rosa_titulo">ROSA</h5>
+                                        <p class="text-white-50 small" data-i18n="analisis.opcion_rosa_desc">Evaluación de oficina</p>
+                                        <span class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);" data-i18n="analisis.opcion_rosa_badge">Disponible</span>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

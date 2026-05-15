@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Uploads and Reports
+uploads/
+reports/
+capturas_riesgo/
+static/frames/
+
+# Models (archivos muy pesados de YOLO)
+*.pt
+yolo11*.pt
+yolov8*.pt
+models/*.pt
+
+# Node modules (no necesarios en GitHub)
+node_modules/
+package-lock.json
+package.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask session
+flask_session/

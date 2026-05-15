@@ -1,0 +1,1198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* ==============================================
+       ESTILOS PROFESIONALES PARA INFORME
+       ============================================== */
+    :root {
+        --primary-dark: #001f3f;
+        --primary-blue: #007aff;
+        --primary-cyan: #00d4ff;
+        --success: #28a745;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #17a2b8;
+        --dark: #1a1a2e;
+        --gray-bg: #f8f9fa;
+        --border-color: #e9ecef;
+        --text-muted: #6c757d;
+    }
+    
+    .report-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        background: white;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .cover-page {
+        background: linear-gradient(135deg, var(--primary-dark) 0%, #0a2a3a 100%);
+        color: white;
+        padding: 3rem;
+        text-align: center;
+        border-bottom: 4px solid var(--primary-cyan);
+        page-break-after: avoid;
+    }
+    
+    .logo-area {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+    
+    .logo-preview {
+        max-width: 180px;
+        max-height: 100px;
+        margin-bottom: 1rem;
+        object-fit: contain;
+    }
+    
+    .logo-placeholder {
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        cursor: pointer;
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        transition: all 0.3s;
+    }
+    
+    .logo-placeholder:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: var(--primary-cyan);
+    }
+    
+    .logo-placeholder i {
+        font-size: 3rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .btn-remove-logo {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        margin-top: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-remove-logo:hover {
+        background: rgba(220, 53, 69, 0.8);
+    }
+    
+    .company-name-input {
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        font-size: 1.8rem;
+        font-weight: 700;
+        text-align: center;
+        width: 80%;
+        margin: 1rem auto;
+        padding: 0.5rem;
+    }
+    
+    .company-name-input:focus {
+        outline: none;
+        border-bottom-color: var(--primary-cyan);
+    }
+    
+    .company-name-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .cover-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 2rem 0 1rem;
+        letter-spacing: 2px;
+    }
+    
+    .cover-subtitle {
+        font-size: 1rem;
+        opacity: 0.8;
+        margin-bottom: 2rem;
+    }
+    
+    .cover-meta {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .cover-meta-item {
+        text-align: center;
+    }
+    
+    .cover-meta-item .label {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .cover-meta-item .value {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .report-content {
+        padding: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-cyan);
+        display: inline-block;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .info-card {
+        background: var(--gray-bg);
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+    }
+    
+    .info-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-card .value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--dark);
+    }
+    
+    .risk-banner {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .risk-banner.risk-1 { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+    .risk-banner.risk-2 { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #333; }
+    .risk-banner.risk-3 { background: linear-gradient(135deg, #fd7e14, #dc3545); color: white; }
+    .risk-banner.risk-4 { background: linear-gradient(135deg, #dc3545, #c82333); color: white; }
+    
+    .risk-banner h2 { font-size: 2rem; font-weight: 800; margin: 0; }
+    .risk-banner p { margin: 0.5rem 0 0; opacity: 0.9; }
+    
+    .chart-container {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+    }
+    
+    .images-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+    
+    .risk-image-card {
+        background: var(--gray-bg);
+        border-radius: 12px;
+        overflow: hidden;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+    
+    .risk-image-card img {
+        width: 100%;
+        height: auto;
+        max-height: 200px;
+        object-fit: cover;
+        background: #333;
+    }
+    
+    .risk-image-card .caption {
+        padding: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: var(--primary-dark);
+        color: white;
+    }
+    
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .modern-table th {
+        background: var(--primary-dark);
+        color: white;
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .modern-table td {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .modern-table tr:last-child td { border-bottom: none; }
+    
+    .dictamen-box {
+        background: linear-gradient(135deg, #e8f4f8, #d4eaf1);
+        border-left: 4px solid var(--primary-cyan);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
+    }
+    
+    .planilla-section {
+        background: var(--gray-bg);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .planilla-title {
+        background: var(--primary-dark);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .report-footer {
+        background: var(--primary-dark);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+        border-top: 3px solid var(--primary-cyan);
+    }
+    
+    .report-footer .logo-footer {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .report-footer .logo-footer i {
+        color: var(--primary-cyan);
+        margin-right: 8px;
+    }
+    
+    .report-footer p {
+        margin: 0;
+        opacity: 0.7;
+        font-size: 0.75rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        flex-wrap: wrap;
+    }
+    
+    .btn-pdf {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 40px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .btn-pdf:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-primary-custom {
+        background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 40px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .btn-secondary-custom {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 40px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    @media print {
+        .action-buttons, .no-print { display: none !important; }
+        .report-container { box-shadow: none; margin: 0; padding: 0; }
+        .cover-page { page-break-after: avoid; }
+        .risk-banner, .planilla-section, .dictamen-box, .modern-table th {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .cover-title { font-size: 1.8rem; }
+        .report-content { padding: 1rem; }
+        .info-grid { grid-template-columns: 1fr; }
+        .images-grid { grid-template-columns: 1fr; }
+        .action-buttons { justify-content: center; }
+    }
+</style>
+
+<div class="report-container" id="reportContainer">
+    <div class="cover-page">
+        <div class="logo-area">
+            <div id="logoContainer" class="logo-placeholder" onclick="document.getElementById('logoInput').click()">
+                <i class="fas fa-building"></i>
+            </div>
+            <img id="logoPreview" class="logo-preview" style="display: none;">
+            <input type="file" id="logoInput" accept="image/png,image/jpeg,image/jpg" style="display: none;">
+            <button id="removeLogoBtn" class="btn-remove-logo" style="display: none;">
+                <i class="fas fa-trash-alt"></i> Eliminar logo
+            </button>
+            <input type="text" id="companyNameInput" class="company-name-input" placeholder="NOMBRE DE LA EMPRESA" value="">
+            <input type="hidden" id="hiddenCompanyName" value="">
+        </div>
+        
+        <h1 class="cover-title">INFORME ERGONÓMICO</h1>
+        <p class="cover-subtitle">Análisis Postural con Inteligencia Artificial</p>
+        
+        <div class="cover-meta">
+            <div class="cover-meta-item"><div class="label">MÉTODO</div><div class="value" id="metodoValue">-</div></div>
+            <div class="cover-meta-item"><div class="label">FECHA</div><div class="value" id="fechaValue"></div></div>
+            <div class="cover-meta-item"><div class="label">VERSIÓN</div><div class="value">ERGOEDGE OS v2.0</div></div>
+        </div>
+    </div>
+    
+    <div class="report-content">
+        <h3 class="section-title">Ficha del Personal Evaluado</h3>
+        <div class="info-grid">
+            <div class="info-card"><div class="label">Operario</div><div class="value" id="operarioNombre">-</div></div>
+            <div class="info-card"><div class="label">Puesto</div><div class="value" id="puestoValor">-</div></div>
+            <div class="info-card"><div class="label">Antigüedad</div><div class="value" id="antiguedadValor">-</div></div>
+            <div class="info-card"><div class="label">Patologías</div><div class="value" id="patologiasValor">-</div></div>
+            <div class="info-card"><div class="label">Evaluador</div><div class="value" id="evaluadorValor">-</div></div>
+            <div class="info-card"><div class="label">Fecha de evaluación</div><div class="value" id="fechaEvaluacion"></div></div>
+        </div>
+        
+        {% set punt = resultado.get('puntuacion', 0) %}
+        {% set metodo = resultado.get('metodo', 'OWAS') %}
+        {% set nivel_riesgo = resultado.get('nivel_riesgo', 'Desconocido') %}
+        {% set riesgo_num = 1 if 'BAJO' in nivel_riesgo.upper() or 'NORMAL' in nivel_riesgo.upper() else 2 if 'MEDIO' in nivel_riesgo.upper() or 'MODERADO' in nivel_riesgo.upper() else 3 if 'ALTO' in nivel_riesgo.upper() else 4 %}
+        
+        <div class="risk-banner risk-{{ riesgo_num }}" id="riskBanner">
+            <h2 id="riesgoTexto">Nivel de Riesgo: {{ nivel_riesgo }}</h2>
+            <p id="puntuacionTexto">Puntuación: {% if metodo == 'OWAS' %}{{ punt }}/4{% elif metodo == 'RULA' %}{{ punt }}/7{% elif metodo == 'REBA' %}{{ punt }}/15{% else %}{{ punt }}/10{% endif %}</p>
+        </div>
+        
+        <h3 class="section-title">Evolución Temporal del Riesgo</h3>
+        <div class="chart-container">
+            <canvas id="riskChart" width="800" height="300" style="max-width: 100%; height: auto;"></canvas>
+            <p class="text-muted text-center mt-2" style="font-size: 0.75rem;">Evolución del nivel de riesgo durante el análisis</p>
+        </div>
+        
+        <div id="imagenesRiesgoContainer" style="display: none;">
+            <h3 class="section-title">Momentos de Mayor Exposición al Riesgo</h3>
+            <div class="images-grid" id="imagenesGrid"></div>
+        </div>
+        
+        <div id="codigoOwasContainer" style="display: none;">
+            <div style="background: #e9ecef; padding: 12px; border-radius: 12px; margin-bottom: 1.5rem;">
+                <strong>Código OWAS:</strong> <span id="codigoOwasValor"></span>
+                <small class="text-muted">(Formato: Espalda/Brazo/Piernas/Carga)</small>
+            </div>
+        </div>
+        
+        <h3 class="section-title">Recomendaciones</h3>
+        <ul id="recomendacionesList" style="margin-bottom: 1.5rem; padding-left: 1.5rem;">
+            <li>Cargando...</li>
+        </ul>
+        
+        <div id="dictamenContainer" style="display: none;">
+            <div class="dictamen-box">
+                <h4 style="margin-top: 0; color: #001f3f;">Dictamen con Inteligencia Artificial</h4>
+                <div id="dictamenTexto" style="white-space: pre-wrap; line-height: 1.6;"></div>
+            </div>
+        </div>
+        
+        <div id="planillasContainer" style="display: none;"></div>
+    </div>
+    
+    <div class="report-footer">
+        <div class="logo-footer"><i class="fas fa-brain"></i> ERGOEDGE OS</div>
+        <p id="copyrightYear">© ERGOEDGE OS - Ingeniería de Factores Humanos</p>
+        <p>Powered by YOLOv11 + Gemini IA</p>
+    </div>
+</div>
+
+<div class="action-buttons no-print" style="max-width: 1100px; margin: 1rem auto;">
+    <button onclick="window.print()" class="btn-pdf"><i class="fas fa-file-pdf me-2"></i> Exportar PDF</button>
+    <button onclick="limpiarLogo()" class="btn-secondary-custom"><i class="fas fa-eraser me-2"></i> Limpiar Logo</button>
+    <a href="/video" class="btn-primary-custom"><i class="fas fa-redo me-2"></i> Nuevo Análisis</a>
+    <a href="/" class="btn-secondary-custom"><i class="fas fa-home me-2"></i> Inicio</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+let riskChartInstance = null;
+
+function getColorByNivel(nivel, metodo) {
+    if (metodo === 'OWAS') {
+        if (nivel === 1) return '#28a745';
+        if (nivel === 2) return '#ffc107';
+        if (nivel === 3) return '#fd7e14';
+        if (nivel >= 4) return '#dc3545';
+    }
+    else if (metodo === 'RULA') {
+        if (nivel <= 2) return '#28a745';
+        if (nivel <= 4) return '#ffc107';
+        if (nivel <= 6) return '#fd7e14';
+        if (nivel >= 7) return '#dc3545';
+    }
+    else if (metodo === 'REBA') {
+        if (nivel === 1) return '#28a745';
+        if (nivel <= 3) return '#ffc107';
+        if (nivel <= 7) return '#fd7e14';
+        if (nivel >= 8) return '#dc3545';
+    }
+    return '#6c757d';
+}
+
+function simplificarDatosEvolucion(evolucionTemporal) {
+    if (!evolucionTemporal || evolucionTemporal.length === 0) {
+        return [];
+    }
+    
+    const puntosSimplificados = [];
+    let ultimoNivel = null;
+    
+    for (let i = 0; i < evolucionTemporal.length; i++) {
+        const tiempo = evolucionTemporal[i][0];
+        const nivel = evolucionTemporal[i][1];
+        
+        if (ultimoNivel === null || nivel !== ultimoNivel) {
+            puntosSimplificados.push([tiempo, nivel]);
+            ultimoNivel = nivel;
+        }
+    }
+    
+    return puntosSimplificados;
+}
+
+function actualizarGrafico(evolucionTemporal, metodo) {
+    const canvas = document.getElementById('riskChart');
+    if (!canvas) return;
+    
+    if (riskChartInstance) {
+        riskChartInstance.destroy();
+        riskChartInstance = null;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    
+    let maxY = 4;
+    let yTitle = 'Nivel de Riesgo OWAS (1-4)';
+    let stepSize = 1;
+    
+    if (metodo === 'RULA') {
+        maxY = 7;
+        yTitle = 'Puntuación RULA (1-7)';
+    } else if (metodo === 'REBA') {
+        maxY = 15;
+        yTitle = 'Puntuación REBA (1-15)';
+        stepSize = 1;
+    } else {
+        maxY = 4;
+        yTitle = 'Nivel de Riesgo OWAS (1-4)';
+    }
+    
+    let puntos = [];
+    let tiempoData = [];
+    let riesgoData = [];
+    let coloresFondo = [];
+    
+    if (evolucionTemporal && evolucionTemporal.length > 0) {
+        puntos = simplificarDatosEvolucion(evolucionTemporal);
+        
+        if (puntos.length > 0) {
+            tiempoData = puntos.map(item => item[0].toFixed(1));
+            riesgoData = puntos.map(item => item[1]);
+            coloresFondo = puntos.map(item => getColorByNivel(item[1], metodo));
+        } else if (evolucionTemporal.length > 0) {
+            tiempoData = [evolucionTemporal[0][0].toFixed(1), evolucionTemporal[evolucionTemporal.length - 1][0].toFixed(1)];
+            riesgoData = [evolucionTemporal[0][1], evolucionTemporal[evolucionTemporal.length - 1][1]];
+            coloresFondo = [
+                getColorByNivel(evolucionTemporal[0][1], metodo),
+                getColorByNivel(evolucionTemporal[evolucionTemporal.length - 1][1], metodo)
+            ];
+        }
+    }
+    
+    if (tiempoData.length === 0) {
+        tiempoData = ['0'];
+        riesgoData = [1];
+        coloresFondo = [getColorByNivel(1, metodo)];
+    }
+    
+    riskChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: tiempoData,
+            datasets: [{
+                label: yTitle,
+                data: riesgoData,
+                backgroundColor: coloresFondo,
+                borderColor: coloresFondo.map(c => c),
+                borderWidth: 1,
+                borderRadius: 8,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    min: 1,
+                    max: maxY,
+                    stepSize: stepSize,
+                    ticks: {
+                        stepSize: stepSize,
+                        callback: function(value) {
+                            if (Number.isInteger(value)) {
+                                return value;
+                            }
+                            return null;
+                        }
+                    },
+                    title: { display: true, text: yTitle, font: { weight: 'bold' } }
+                },
+                x: {
+                    title: { display: true, text: 'Tiempo (segundos)', font: { weight: 'bold' } },
+                    ticks: {
+                        callback: function(value) {
+                            return value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const nivel = context.raw;
+                            let categoria = '';
+                            if (metodo === 'OWAS') {
+                                if (nivel === 1) categoria = ' - Riesgo Bajo';
+                                else if (nivel === 2) categoria = ' - Riesgo Moderado';
+                                else if (nivel === 3) categoria = ' - Riesgo Alto';
+                                else if (nivel >= 4) categoria = ' - Riesgo Crítico';
+                            } else if (metodo === 'RULA') {
+                                if (nivel <= 2) categoria = ' - Riesgo Bajo';
+                                else if (nivel <= 4) categoria = ' - Riesgo Medio';
+                                else if (nivel <= 6) categoria = ' - Riesgo Alto';
+                                else if (nivel >= 7) categoria = ' - Riesgo Muy Alto';
+                            } else if (metodo === 'REBA') {
+                                if (nivel === 1) categoria = ' - Riesgo Bajo';
+                                else if (nivel <= 3) categoria = ' - Riesgo Medio';
+                                else if (nivel <= 7) categoria = ' - Riesgo Alto';
+                                else if (nivel >= 8) categoria = ' - Riesgo Muy Alto';
+                            }
+                            return `Tiempo: ${context.label}s - Nivel: ${nivel}${categoria}`;
+                        }
+                    }
+                },
+                legend: { position: 'top' }
+            }
+        }
+    });
+}
+
+function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
+    const puntuacionNumerica = parseFloat(puntuacion);
+    let nivelSRT = 1;
+    let textSRT = "Tolerable";
+    let colorSRT = "#28a745";
+    
+    if (metodo === 'OWAS') {
+        if (puntuacionNumerica <= 2) { nivelSRT = 1; textSRT = "Tolerable"; colorSRT = "#28a745"; }
+        else if (puntuacionNumerica === 3) { nivelSRT = 2; textSRT = "Moderado"; colorSRT = "#ffc107"; }
+        else { nivelSRT = 3; textSRT = "No Tolerable"; colorSRT = "#dc3545"; }
+    } 
+    else if (metodo === 'RULA') {
+        if (puntuacionNumerica <= 2) { nivelSRT = 1; textSRT = "Tolerable"; colorSRT = "#28a745"; }
+        else if (puntuacionNumerica <= 4) { nivelSRT = 2; textSRT = "Moderado"; colorSRT = "#ffc107"; }
+        else { nivelSRT = 3; textSRT = "No Tolerable"; colorSRT = "#dc3545"; }
+    }
+    else if (metodo === 'REBA') {
+        if (puntuacionNumerica <= 3) { nivelSRT = 1; textSRT = "Tolerable"; colorSRT = "#28a745"; }
+        else if (puntuacionNumerica <= 7) { nivelSRT = 2; textSRT = "Moderado"; colorSRT = "#ffc107"; }
+        else { nivelSRT = 3; textSRT = "No Tolerable"; colorSRT = "#dc3545"; }
+    }
+    else if (metodo === 'ROSA') {
+        if (puntuacionNumerica <= 3) { nivelSRT = 1; textSRT = "Tolerable"; colorSRT = "#28a745"; }
+        else if (puntuacionNumerica <= 6) { nivelSRT = 2; textSRT = "Moderado"; colorSRT = "#ffc107"; }
+        else { nivelSRT = 3; textSRT = "No Tolerable"; colorSRT = "#dc3545"; }
+    }
+    
+    const peso = parseFloat(resultado.peso_carga) || 10;
+    const frecuencia = parseInt(resultado.frecuencia_levantamiento) || 20;
+    const distancia = parseInt(resultado.distancia_vertical) || 50;
+    const bipedestacion = resultado.tipo_bipedestacion || 'Fija';
+    const confort = resultado.confort_termico || 'Adecuado';
+    const estresContacto = resultado.estres_contacto || 'No';
+    const cantidadTrabajadores = resultado.cantidad_trabajadores || '1';
+    const horasExposicion = resultado.horas_exposicion || '8';
+    const diasSemana = resultado.dias_semana || '5';
+    const observaciones = resultado.observaciones_srt || '';
+    const descripcionTarea = resultado.descripcion_tarea || 'Tarea principal';
+    
+    // Evaluaciones para Planilla 2
+    let evaluacionPeso = "BAJO";
+    let riesgoPesoTolerable = "Tolerable";
+    let colorPeso = "#28a745";
+    if (peso > 25) { evaluacionPeso = "ALTO"; riesgoPesoTolerable = "NO TOLERABLE"; colorPeso = "#dc3545"; }
+    else if (peso > 10) { evaluacionPeso = "MODERADO"; riesgoPesoTolerable = "Requiere evaluación"; colorPeso = "#ffc107"; }
+    
+    let evaluacionFrecuencia = "BAJO";
+    let riesgoFrecuenciaTolerable = "Tolerable";
+    let colorFrecuencia = "#28a745";
+    if (frecuencia > 12) { evaluacionFrecuencia = "ALTO"; riesgoFrecuenciaTolerable = "NO TOLERABLE"; colorFrecuencia = "#dc3545"; }
+    else if (frecuencia > 5) { evaluacionFrecuencia = "MODERADO"; riesgoFrecuenciaTolerable = "Requiere evaluación"; colorFrecuencia = "#ffc107"; }
+    
+    // Escala de Borg para movimientos repetitivos
+    let escalaBorg = 0;
+    let riesgoBorgTolerable = "Tolerable";
+    let colorBorg = "#28a745";
+    if (metodo === 'RULA' || metodo === 'REBA') {
+        if (puntuacionNumerica >= 7) { escalaBorg = 7; riesgoBorgTolerable = "NO TOLERABLE - ACCIÓN INMEDIATA"; colorBorg = "#dc3545"; }
+        else if (puntuacionNumerica >= 6) { escalaBorg = 6; riesgoBorgTolerable = "NO TOLERABLE"; colorBorg = "#fd7e14"; }
+        else if (puntuacionNumerica >= 5) { escalaBorg = 5; riesgoBorgTolerable = "Requiere evaluación"; colorBorg = "#ffc107"; }
+        else if (puntuacionNumerica >= 4) { escalaBorg = 4; riesgoBorgTolerable = "Requiere evaluación"; colorBorg = "#ffc107"; }
+        else if (puntuacionNumerica >= 3) { escalaBorg = 3; riesgoBorgTolerable = "Moderado - monitorear"; colorBorg = "#ffffcc"; }
+        else { escalaBorg = puntuacionNumerica; }
+    }
+    
+    let evaluacionPosturas = "BAJO";
+    let riesgoPosturasTolerable = "Tolerable";
+    let colorPosturas = "#28a745";
+    if (nivelRiesgo.includes('CRÍTICO') || nivelRiesgo.includes('MUY ALTO')) { evaluacionPosturas = "ALTO"; riesgoPosturasTolerable = "NO TOLERABLE"; colorPosturas = "#dc3545"; }
+    else if (nivelRiesgo.includes('ALTO')) { evaluacionPosturas = "MODERADO"; riesgoPosturasTolerable = "Requiere evaluación"; colorPosturas = "#ffc107"; }
+    
+    let riesgoConfortTolerable = confort === 'Adecuado' ? "Tolerable" : "NO TOLERABLE";
+    let colorConfort = confort === 'Adecuado' ? "#28a745" : "#dc3545";
+    
+    let riesgoEstresTolerable = estresContacto !== 'No' ? "NO TOLERABLE" : "Tolerable";
+    let colorEstres = estresContacto !== 'No' ? "#dc3545" : "#28a745";
+    
+    let hayRiesgoNoTolerable = (riesgoPesoTolerable === "NO TOLERABLE" || riesgoBorgTolerable === "NO TOLERABLE" || riesgoPosturasTolerable === "NO TOLERABLE" || riesgoConfortTolerable === "NO TOLERABLE" || riesgoEstresTolerable === "NO TOLERABLE");
+    
+    const fechaFormateada = new Date().toLocaleDateString('es-AR');
+    
+    let html = '';
+    
+    html += '<div class="planilla-section">';
+    html += '<h3 style="color: var(--primary-dark); margin-top: 0;">📋 ANEXO I - PROTOCOLO DE ERGONOMÍA</h3>';
+    html += '<p style="margin-bottom: 1rem; color: #555;">Resolución SRT 886/2015 - Superintendencia de Riesgos del Trabajo</p>';
+    
+    // ============================================================
+    // PLANILLA 1: IDENTIFICACIÓN DE FACTORES DE RIESGO
+    // ============================================================
+    html += '<h4 class="planilla-title">Planilla N° 1: Identificación de Factores de Riesgo</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>Factor de Riesgo</th>';
+    html += '<th>Tareas habituales</th>';
+    html += '<th>Tiempo de la jornada</th>';
+    html += '<th>Tarea 1</th>';
+    html += '<th>Tarea 2</th>';
+    html += '<th>Tarea 3</th>';
+    html += '<th>Tiempo total exposición</th>';
+    html += '<th>Nivel de Riesgo</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+    
+    const factores = [
+        { codigo: 'A', nombre: 'Levantamiento manual de cargas', presente: (metodo === 'OWAS'), tiempo: horasExposicion, riesgo: riesgoPesoTolerable, color: colorPeso },
+        { codigo: 'B', nombre: 'Empuje y arrastre de cargas', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'C', nombre: 'Transporte manual de cargas', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'D', nombre: 'Bipedestación', presente: true, tiempo: horasExposicion, riesgo: bipedestacion === 'Fija' ? 'NO TOLERABLE' : 'Tolerable', color: bipedestacion === 'Fija' ? '#ffcccc' : '#ccffcc' },
+        { codigo: 'E', nombre: 'Movimientos repetitivos', presente: (metodo === 'RULA' || metodo === 'REBA'), tiempo: horasExposicion, riesgo: riesgoBorgTolerable, color: colorBorg },
+        { codigo: 'F', nombre: 'Posturas forzadas', presente: true, tiempo: horasExposicion, riesgo: riesgoPosturasTolerable, color: colorPosturas },
+        { codigo: 'G', nombre: 'Vibraciones', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'H', nombre: 'Confort térmico', presente: true, tiempo: horasExposicion, riesgo: riesgoConfortTolerable, color: colorConfort },
+        { codigo: 'I', nombre: 'Estrés de contacto', presente: (estresContacto !== 'No'), tiempo: horasExposicion, riesgo: riesgoEstresTolerable, color: colorEstres }
+    ];
+    
+    factores.forEach(factor => {
+        html += '<tr>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;"><strong>' + factor.codigo + '</strong> - ' + factor.nombre + '</td>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? descripcionTarea : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? horasExposicion + ' h' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? 'X' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? horasExposicion + ' h' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd; background: ' + factor.color + ';">' + factor.riesgo + '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody>';
+    html += '</table>';
+    
+    // ============================================================
+    // PLANILLA 2: EVALUACIÓN INICIAL (PASO 1 y PASO 2)
+    // ============================================================
+    html += '<h4 class="planilla-title">Planilla N° 2: Evaluación Inicial</h4>';
+    
+    // Función auxiliar para generar planillas 2.X
+    function generarPlanilla2(titulo, preguntas, respuestas) {
+        let h = '<h5 style="margin-top: 1rem; margin-bottom: 0.5rem;">' + titulo + '</h5>';
+        h += '<table class="modern-table">';
+        h += '<thead><tr><th>N°</th><th>Descripción</th><th style="text-align:center">SÍ</th><th style="text-align:center">NO</th></tr></thead>';
+        h += '<tbody>';
+        
+        for (let i = 0; i < preguntas.length; i++) {
+            let esSi = respuestas[i] === true;
+            let esNo = respuestas[i] === false;
+            h += '<tr>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (i+1) + '</td>';
+            h += '<td style="padding: 8px; border: 1px solid #ddd;">' + preguntas[i] + '</td>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (esSi ? 'X' : '') + '</td>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (esNo ? 'X' : '') + '</td>';
+            h += '</tr>';
+        }
+        
+        h += '</tbody></table>';
+        return h;
+    }
+    
+    // 2.A - Levantamiento manual de cargas
+    if (metodo === 'OWAS') {
+        html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
+            'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
+            'Frecuencia > 12 levantamientos por hora',
+            'Distancia vertical > 75 cm',
+            'Desplazamiento horizontal > 50 cm',
+            'Postura forzada durante el levantamiento'
+        ], [peso > 25, frecuencia > 12, distancia > 75, false, (nivelRiesgo.includes('ALTO'))]);
+    } else {
+        html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
+            'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
+            'Frecuencia > 12 levantamientos por hora',
+            'Distancia vertical > 75 cm'
+        ], [false, false, false]);
+    }
+    
+    // 2.D - Bipedestación
+    html += generarPlanilla2('2.D - Bipedestación', [
+        'Bipedestación durante más de 2 horas continuas sin pausas',
+        'Superficie de trabajo dura sin tapiz antifatiga',
+        'Imposibilidad de alternar con posición sentada'
+    ], [bipedestacion === 'Fija', bipedestacion === 'Fija', bipedestacion === 'Fija']);
+    
+    // 2.E - Movimientos repetitivos con Escala de Borg
+    if (metodo === 'RULA' || metodo === 'REBA') {
+        html += generarPlanilla2('2.E - Movimientos repetitivos (Escala de Borg CR-10)', [
+            'Ciclo de trabajo < 30 segundos',
+            'Movimientos repetitivos del mismo segmento corporal > 4 horas por día',
+            'Nivel de esfuerzo percibido > 3 (Escala de Borg)',
+            'Nivel de esfuerzo percibido ≥ 7 (requiere acción inmediata)'
+        ], [escalaBorg >= 4, escalaBorg >= 4, escalaBorg >= 4, escalaBorg >= 7]);
+        html += '<p class="text-muted small">Escala de Borg CR-10: 0=Nada, 0.5=Muy muy leve, 1=Muy leve, 2=Leve, 3=Moderado, 4=Algo fuerte, 5=Fuerte, 6=, 7=Muy fuerte, 8=, 9=, 10=Extremadamente fuerte. Nivel ≥ 4 requiere evaluación. Nivel 7 requiere acción inmediata.</p>';
+    } else {
+        html += generarPlanilla2('2.E - Movimientos repetitivos', [
+            'Ciclo de trabajo < 30 segundos',
+            'Movimientos repetitivos del mismo segmento corporal > 4 horas por día'
+        ], [false, false]);
+    }
+    
+    // 2.F - Posturas forzadas
+    html += generarPlanilla2('2.F - Posturas forzadas', [
+        'Flexión de tronco > 20°',
+        'Flexión de cuello > 20°',
+        'Elevación de brazos sobre el nivel de los hombros',
+        'Posturas mantenidas por más de 2 horas continuas'
+    ], [
+        (nivelRiesgo.includes('ALTO') || nivelRiesgo.includes('CRÍTICO')),
+        (nivelRiesgo.includes('ALTO') || nivelRiesgo.includes('CRÍTICO')),
+        (metodo === 'RULA' && puntuacionNumerica >= 4),
+        true
+    ]);
+    
+    // 2.H - Confort térmico
+    html += generarPlanilla2('2.H - Confort térmico (Gráfico de Fanger)', [
+        'Temperatura fuera del rango 20-24°C',
+        'Humedad relativa fuera del rango 40-65%',
+        'Corrientes de aire o asimetría térmica'
+    ], [confort !== 'Adecuado', confort !== 'Adecuado', false]);
+    html += '<p class="text-muted small">Zona de confort según gráfico de Fanger: Temperatura 20-24°C, Humedad relativa 40-65%.</p>';
+    
+    // 2.I - Estrés de contacto
+    html += generarPlanilla2('2.I - Estrés de contacto', [
+        'Puntos de apoyo con bordes cortantes o duros',
+        'Herramientas sin superficies ergonómicas',
+        'Presión mantenida sobre tejidos blandos'
+    ], [estresContacto !== 'No', estresContacto !== 'No', estresContacto !== 'No']);
+    
+    // Resumen de tolerabilidad
+    html += '<div class="risk-banner" style="margin-top: 1rem; background: ' + (hayRiesgoNoTolerable ? '#dc3545' : '#28a745') + '; color: white; padding: 15px; text-align: center; border-radius: 8px;">';
+    html += '<h4>CONCLUSIÓN DE LA EVALUACIÓN INICIAL</h4>';
+    html += '<p>' + (hayRiesgoNoTolerable ? '⚠️ Se han identificado RIESGOS NO TOLERABLES. Debe procederse a una evaluación específica y completar las Planillas 3 y 4.' : '✅ Todos los riesgos identificados son TOLERABLES. No se requiere acción inmediata.') + '</p>';
+    html += '</div>';
+    
+    // ============================================================
+    // PLANILLA 3: MEDIDAS CORRECTIVAS Y PREVENTIVAS
+    // ============================================================
+    html += '<h4 class="planilla-title">Planilla N° 3: Medidas Correctivas y Preventivas</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead><tr><th>N°</th><th>Medidas Preventivas / Correctivas</th><th style="text-align:center">SÍ / NO</th><th>Observaciones</th></tr></thead>';
+    html += '<tbody>';
+    
+    let medidas = [];
+    let medidaIdx = 1;
+    
+    if (metodo === 'OWAS' && peso > 10) {
+        medidas.push({ desc: 'Capacitación en técnicas seguras de levantamiento de cargas', implementada: false, obs: 'Pendiente programar' });
+        medidas.push({ desc: 'Reducción del peso de la carga o instalación de ayudas mecánicas', implementada: false, obs: 'Evaluar viabilidad técnica' });
+    }
+    if (bipedestacion === 'Fija') {
+        medidas.push({ desc: 'Instalación de tapiz antifatiga y asiento tipo banquetas', implementada: false, obs: 'Solicitar cotización' });
+        medidas.push({ desc: 'Rotación de tareas cada 60 minutos', implementada: false, obs: 'Coordinar con supervisión' });
+    }
+    if ((metodo === 'RULA' || metodo === 'REBA') && escalaBorg >= 4) {
+        medidas.push({ desc: 'Pausas activas cada 60 minutos', implementada: false, obs: 'Implementar programa de pausas' });
+        medidas.push({ desc: 'Capacitación en pausas activas y autoejercicios', implementada: false, obs: 'Gestionar con servicio de medicina laboral' });
+    }
+    if (escalaBorg >= 7) {
+        medidas.push({ desc: 'Rotación de tareas cada 30 minutos', implementada: false, obs: 'Revisar proceso productivo' });
+        medidas.push({ desc: 'Evaluación biomecánica específica', implementada: false, obs: 'Contratar especialista' });
+    }
+    if (confort !== 'Adecuado') {
+        medidas.push({ desc: 'Evaluación de carga térmica (índice WBGT o T° efectiva)', implementada: false, obs: 'Contratar especialista' });
+        medidas.push({ desc: 'Instalación de sistemas de climatización o ventilación', implementada: false, obs: 'Presupuestar' });
+    }
+    if (estresContacto !== 'No') {
+        medidas.push({ desc: 'Instalación de superficies acolchadas o ergonómicas', implementada: false, obs: 'Identificar puntos críticos' });
+        medidas.push({ desc: 'Provisión de elementos de protección personal (guantes)', implementada: false, obs: 'Solicitar a compras' });
+    }
+    
+    if (medidas.length === 0) {
+        html += '<tr><td colspan="4" style="text-align:center; padding: 8px; border: 1px solid #ddd;">No se requieren medidas preventivas/correctivas específicas</div></div></td></div></div></td></div></div></td></div></div></tr>';
+    } else {
+        medidas.forEach(med => {
+            html += '<tr>';
+            html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + medidaIdx++ + '</td>';
+            html += '<td style="padding: 8px; border: 1px solid #ddd;">' + med.desc + '</td>';
+            html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (med.implementada ? 'SÍ' : 'NO') + '</td>';
+            html += '<td style="padding: 8px; border: 1px solid #ddd;">' + med.obs + '</td>';
+            html += '</tr>';
+        });
+    }
+    
+    html += '</tbody></tr>';
+    
+    // ============================================================
+    // PLANILLA 4: MATRIZ DE SEGUIMIENTO
+    // ============================================================
+    html += '<h4 class="planilla-title">Planilla N° 4: Matriz de Seguimiento</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>N° M.C.P</th>';
+    html += '<th>Nombre del Puesto</th>';
+    html += '<th>Fecha de Evaluación</th>';
+    html += '<th>Nivel de Riesgo</th>';
+    html += '<th>Fecha de Medida Administrativa</th>';
+    html += '<th>Fecha de Medida de Ingeniería</th>';
+    html += '<th>Fecha de Cierre</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+    
+    for (let i = 1; i <= Math.max(medidas.length, 3); i++) {
+        let nivelRiesgoFinal = hayRiesgoNoTolerable ? 'NO TOLERABLE' : 'Tolerable';
+        let bgColor = hayRiesgoNoTolerable ? '#ffcccc' : '#ccffcc';
+        
+        html += '<tr>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + i + '</td>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;">' + (resultado.puesto || 'No especificado') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + fechaFormateada + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd; background: ' + bgColor + ';">' + nivelRiesgoFinal + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '</tr>';
+    }
+    
+    html += '</tbody></table>';
+    
+    // Observaciones
+    if (observaciones) {
+        html += '<div class="dictamen-box" style="margin-top: 1rem;">';
+        html += '<h5>Observaciones adicionales</h5>';
+        html += '<p>' + observaciones + '</p>';
+        html += '</div>';
+    }
+    
+    // Marco Normativo
+    html += '<div class="dictamen-box" style="margin-top: 1rem;">';
+    html += '<h5>Marco Normativo Aplicable</h5>';
+    html += '<ul>';
+    html += '<li>Ley 19.587/72 - Higiene y Seguridad en el Trabajo</li>';
+    html += '<li>Decreto 351/79 - Reglamentario de la Ley 19.587</li>';
+    html += '<li>Resolución SRT 295/2003 - Programa de Ergonomía Integrado</li>';
+    html += '<li>Resolución SRT 886/2015 - Protocolo de Ergonomía</li>';
+    html += '<li>Norma ISO 11226 - Evaluación de posturas de trabajo</li>';
+    html += '<li>Norma ISO 11228 - Manipulación manual de cargas</li>';
+    html += '</ul>';
+    html += '<hr>';
+    html += '<p class="small text-muted">Fecha de evaluación: ' + fechaFormateada + '</p>';
+    html += '<p class="small text-muted">Documento generado por ERGOEDGE OS - Cumplimiento Res. SRT 886/2015</p>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    return html;
+}
+
+function cargarYRenderizar(id, autoPrint = false) {
+    if (!id) {
+        console.error('No se proporcionó ID de análisis');
+        document.getElementById('riesgoTexto').innerHTML = 'Error: No se especificó qué análisis mostrar';
+        return;
+    }
+    
+    const url = `/api/analisis/${id}`;
+    fetch(url)
+        .then(response => response.json())
+        .then(item => {
+            if (item.error) {
+                console.error('Error al cargar análisis:', item.error);
+                document.getElementById('riesgoTexto').innerHTML = 'Error al cargar el análisis';
+                return;
+            }
+            
+            const resultado = item.resultado || {};
+            const metodo = item.metodo || 'OWAS';
+            
+            document.getElementById('operarioNombre').innerHTML = (item.operario_nombre || 'N/A') + ' (' + (item.operario_edad || 'N/A') + ' años)';
+            document.getElementById('puestoValor').innerHTML = item.puesto || 'N/A';
+            document.getElementById('antiguedadValor').innerHTML = item.operario_antiguedad || 'N/A';
+            document.getElementById('patologiasValor').innerHTML = item.operario_patologias || 'Ninguna';
+            document.getElementById('evaluadorValor').innerHTML = item.evaluador || 'N/A';
+            document.getElementById('metodoValue').innerHTML = metodo;
+            
+            const empresaInput = document.getElementById('companyNameInput');
+            const hiddenCompany = document.getElementById('hiddenCompanyName');
+            if (empresaInput) empresaInput.value = item.empresa || '';
+            if (hiddenCompany) hiddenCompany.value = item.empresa || '';
+            
+            const puntuacion = resultado.puntuacion || item.puntuacion || 'N/A';
+            const nivelRiesgo = item.nivel_riesgo || 'Desconocido';
+            
+            let riesgoNum = 1;
+            const riesgoLower = (nivelRiesgo || '').toLowerCase();
+            if (riesgoLower.includes('bajo') || riesgoLower.includes('normal')) riesgoNum = 1;
+            else if (riesgoLower.includes('medio') || riesgoLower.includes('moderado')) riesgoNum = 2;
+            else if (riesgoLower.includes('alto')) riesgoNum = 3;
+            else if (riesgoLower.includes('crítico') || riesgoLower.includes('critico')) riesgoNum = 4;
+            
+            const banner = document.getElementById('riskBanner');
+            banner.className = `risk-banner risk-${riesgoNum}`;
+            document.getElementById('riesgoTexto').innerHTML = `Nivel de Riesgo: ${nivelRiesgo}`;
+            
+            let puntTexto = '';
+            if (metodo === 'OWAS') puntTexto = `${puntuacion}/4`;
+            else if (metodo === 'RULA') puntTexto = `${puntuacion}/7`;
+            else if (metodo === 'REBA') puntTexto = `${puntuacion}/15`;
+            else puntTexto = `${puntuacion}/10`;
+            document.getElementById('puntuacionTexto').innerHTML = `Puntuación: ${puntTexto}`;
+            
+            const recList = document.getElementById('recomendacionesList');
+            recList.innerHTML = '';
+            if (resultado.recomendaciones && resultado.recomendaciones.length > 0) {
+                resultado.recomendaciones.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.style.marginBottom = '0.5rem';
+                    li.innerHTML = rec;
+                    recList.appendChild(li);
+                });
+            } else {
+                recList.innerHTML = '<li>No hay recomendaciones disponibles</li>';
+            }
+            
+            if (resultado.codigo_owas && metodo === 'OWAS') {
+                document.getElementById('codigoOwasValor').innerHTML = resultado.codigo_owas;
+                document.getElementById('codigoOwasContainer').style.display = 'block';
+            } else {
+                document.getElementById('codigoOwasContainer').style.display = 'none';
+            }
+            
+            if (resultado.dictamen_ia) {
+                document.getElementById('dictamenTexto').innerHTML = resultado.dictamen_ia.replace(/\n/g, '<br>');
+                document.getElementById('dictamenContainer').style.display = 'block';
+            } else {
+                document.getElementById('dictamenContainer').style.display = 'none';
+            }
+            
+            const planillasContainer = document.getElementById('planillasContainer');
+            if (resultado.cumple_normativa === true || item.cumple_normativa === true) {
+                planillasContainer.innerHTML = generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo);
+                planillasContainer.style.display = 'block';
+            } else {
+                planillasContainer.style.display = 'none';
+            }
+            
+            const imagenesContainer = document.getElementById('imagenesRiesgoContainer');
+            const imagenesGrid = document.getElementById('imagenesGrid');
+            const imagenesRiesgo = resultado.imagenes_riesgo || item.imagenes_riesgo || [];
+            
+            if (imagenesRiesgo.length > 0) {
+                imagenesGrid.innerHTML = '';
+                imagenesRiesgo.slice(0, 3).forEach((img, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'risk-image-card';
+                    card.innerHTML = `
+                        <img src="${img}" alt="Momento de riesgo" style="max-width: 100%;">
+                        <div class="caption">⚠️ Momento de alta exposición - ${idx + 1}</div>
+                    `;
+                    imagenesGrid.appendChild(card);
+                });
+                imagenesContainer.style.display = 'block';
+            } else {
+                imagenesContainer.style.display = 'none';
+            }
+            
+            const evolucionTemporal = resultado.evolucion_temporal || [];
+            actualizarGrafico(evolucionTemporal, metodo);
+            
+            if (autoPrint) {
+                setTimeout(() => window.print(), 500);
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando análisis:', error);
+            document.getElementById('riesgoTexto').innerHTML = 'Error de conexión al cargar el análisis';
+        });
+}
+
+// ============ INICIALIZACIÓN ============
+const hoy = new Date();
+const fechaFormateada = hoy.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+document.getElementById('fechaValue').textContent = fechaFormateada;
+document.getElementById('fechaEvaluacion').textContent = fechaFormateada;
+document.getElementById('copyrightYear').innerHTML = `© ${hoy.getFullYear()} ERGOEDGE OS - Ingeniería de Factores Humanos`;
+
+const exportarId = sessionStorage.getItem('exportar_analisis_id');
+const urlParams = new URLSearchParams(window.location.search);
+const analisisIdUrl = urlParams.get('id');
+const printParam = urlParams.get('print');
+
+let idParaCargar = null;
+
+if (exportarId) {
+    idParaCargar = exportarId;
+    sessionStorage.removeItem('exportar_analisis_id');
+} else if (analisisIdUrl) {
+    idParaCargar = analisisIdUrl;
+}
+
+if (idParaCargar) {
+    cargarYRenderizar(idParaCargar, printParam === '1');
+} else {
+    document.getElementById('riesgoTexto').innerHTML = 'No hay análisis para mostrar';
+    document.getElementById('puntuacionTexto').innerHTML = 'Seleccione un análisis desde el dashboard';
+}
+
+// ============ LÓGICA DEL LOGO ============
+const logoInput = document.getElementById('logoInput');
+const logoPreview = document.getElementById('logoPreview');
+const logoContainer = document.getElementById('logoContainer');
+const removeLogoBtn = document.getElementById('removeLogoBtn');
+const companyNameInput = document.getElementById('companyNameInput');
+const hiddenCompanyName = document.getElementById('hiddenCompanyName');
+
+if (hiddenCompanyName.value) companyNameInput.value = hiddenCompanyName.value;
+companyNameInput.addEventListener('change', function() { hiddenCompanyName.value = this.value; });
+
+logoInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            logoContainer.style.display = 'none';
+            logoPreview.src = event.target.result;
+            logoPreview.style.display = 'block';
+            removeLogoBtn.style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function limpiarLogo() {
+    logoPreview.src = '';
+    logoPreview.style.display = 'none';
+    logoContainer.style.display = 'flex';
+    removeLogoBtn.style.display = 'none';
+    logoInput.value = '';
+    if (typeof showToast === 'function') {
+        showToast('Logo eliminado. Puede subir uno nuevo para este informe.', 'info', 3000);
+    }
+}
+
+removeLogoBtn.addEventListener('click', limpiarLogo);
+window.limpiarLogo = limpiarLogo;
+</script>
+{% endblock %}

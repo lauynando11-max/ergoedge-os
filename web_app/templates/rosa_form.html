@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-computer"></i> ROSA - Evaluación de Oficina</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/rosa/calcular">
+                    <h5 class="mt-3">Datos de la Empresa</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Empresa</label>
+                            <input type="text" name="empresa" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Puesto</label>
+                            <input type="text" name="puesto" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Evaluador</label>
+                            <input type="text" name="evaluador" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4">Datos del Operario</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" name="operario_nombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Edad</label>
+                            <input type="number" name="operario_edad" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Antigüedad</label>
+                            <input type="text" name="operario_antiguedad" class="form-control" placeholder="Ej: 5 años" required>
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <label class="form-label">Patologías previas</label>
+                            <input type="text" name="operario_patologias" class="form-control" placeholder="Dejar vacío si no">
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-clock"></i> <strong>Factor Tiempo de Uso:</strong>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="uso_continuo" id="uso_continuo" value="true">
+                            <label class="form-check-label" for="uso_continuo">
+                                ¿El trabajador utiliza el equipo de forma continuada durante más de 1 hora sin pausa?
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-calculator"></i> Evaluar Puesto
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

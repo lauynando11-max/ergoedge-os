@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.8; }
+    }
+    
+    .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+    }
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+    }
+    
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .historial-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .historial-table th {
+        text-align: left;
+        padding: 12px 8px;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 500;
+        font-size: 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .historial-table td {
+        padding: 12px 8px;
+        color: white;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.85rem;
+    }
+    
+    .historial-table tr:hover td {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .badge-riesgo {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+    
+    .btn-icon {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        transition: all 0.3s;
+    }
+    
+    .btn-icon:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+    
+    .modal-glass {
+        background: rgba(10, 25, 47, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+    }
+    
+    .modal-glass .modal-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .modal-glass .modal-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
+
+<div class="gradient-bg min-vh-100 d-flex align-items-center position-relative overflow-hidden">
+    <div class="position-absolute top-0 start-0 w-100 h-100 overflow-hidden">
+        <div class="position-absolute" style="top: 10%; left: 5%; width: 300px; height: 300px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(50px); animation: pulse 8s ease-in-out infinite;"></div>
+        <div class="position-absolute" style="bottom: 10%; right: 5%; width: 400px; height: 400px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(60px); animation: pulse 6s ease-in-out infinite reverse;"></div>
+        <div class="position-absolute" style="top: 50%; left: 50%; width: 250px; height: 250px; background: rgba(255,255,255,0.15); border-radius: 50%; filter: blur(40px);"></div>
+    </div>
+
+    <div class="container position-relative" style="z-index: 2; padding: 2rem 1rem;">
+        <div class="row">
+            <!-- Columna izquierda: Perfil -->
+            <div class="col-lg-4 mb-4">
+                <div class="glass-card p-4 animate-float h-100">
+                    <div class="text-center mb-4">
+                        <div class="display-1">
+                            <i class="fas fa-user-astronaut text-white"></i>
+                        </div>
+                        <!-- CORREGIDO: Sin data-i18n para mostrar nombre dinámico -->
+                        <h2 class="text-white fw-bold mb-2">{{ usuario.nombre }}</h2>
+                        <!-- CORREGIDO: Sin data-i18n para mostrar email dinámico -->
+                        <p class="text-white-50">{{ usuario.email }}</p>
+                        <p class="text-white-50 small" data-i18n="dashboard.perfil.miembro_desde">Miembro desde {{ usuario.fecha }}</p>
+                    </div>
+
+                    <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
+
+                    <div class="text-center">
+                        <a href="/analisis" class="btn btn-light rounded-pill px-4 w-100 mb-2" data-i18n="dashboard.perfil.boton_nuevo_analisis">
+                            <i class="fas fa-plus-circle me-2"></i>Nuevo Análisis
+                        </a>
+                        <a href="/logout" class="btn btn-outline-light rounded-pill px-4 w-100" data-i18n="dashboard.perfil.boton_cerrar_sesion">
+                            <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                        </a>
+                    </div>
+
+                    <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
+
+                    <div class="glass-card p-3">
+                        <h6 class="text-white fw-bold mb-3" data-i18n="dashboard.perfil.info_cuenta_titulo">Información de la cuenta</h6>
+                        <div class="row mb-2">
+                            <div class="col-5 text-white-50" data-i18n="dashboard.perfil.label_nombre">Nombre:</div>
+                            <div class="col-7 text-white">{{ usuario.nombre }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-5 text-white-50" data-i18n="dashboard.perfil.label_correo">Correo:</div>
+                            <div class="col-7 text-white">{{ usuario.email }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-5 text-white-50" data-i18n="dashboard.perfil.label_registro">Registro:</div>
+                            <div class="col-7 text-white">{{ usuario.fecha }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: Historial -->
+            <div class="col-lg-8">
+                <div class="glass-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="text-white fw-bold mb-0" data-i18n="dashboard.historial.titulo">
+                            <i class="fas fa-history me-2"></i>Historial de Análisis
+                        </h3>
+                        <span class="badge bg-primary bg-opacity-50 text-white px-3 py-2 rounded-pill" data-i18n="dashboard.historial.contador_analisis">
+                            {{ historial|length }} análisis
+                        </span>
+                    </div>
+
+                    {% if historial %}
+                        <div class="table-responsive">
+                            <table class="historial-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="dashboard.historial.tabla_fecha">FECHA</th>
+                                        <th data-i18n="dashboard.historial.tabla_metodo">MÉTODO</th>
+                                        <th data-i18n="dashboard.historial.tabla_empresa">EMPRESA</th>
+                                        <th data-i18n="dashboard.historial.tabla_operario">OPERARIO</th>
+                                        <th data-i18n="dashboard.historial.tabla_riesgo">RIESGO</th>
+                                        <th data-i18n="dashboard.historial.tabla_acciones">ACCIONES</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in historial %}
+                                    <tr>
+                                        <td class="small">{{ item.fecha }}</td>
+                                        <td>
+                                            <span class="badge bg-primary bg-opacity-50 text-white px-2 py-1 rounded-pill" style="font-size: 0.7rem;">
+                                                {{ item.metodo }}
+                                            </span>
+                                        </td>
+                                        <td>{{ item.empresa[:20] }}{% if item.empresa|length > 20 %}...{% endif %}</td>
+                                        <td>{{ item.operario_nombre[:15] }}{% if item.operario_nombre|length > 15 %}...{% endif %}</td>
+                                        <td>
+                                            {% set riesgo = item.nivel_riesgo|default('') %}
+                                            {% set riesgo_lower = riesgo|lower %}
+                                            {% if 'crítico' in riesgo_lower or 'muy alto' in riesgo_lower %}
+                                                <span class="badge-riesgo" style="background: #dc3545; color: white;">{{ riesgo }}</span>
+                                            {% elif 'alto' in riesgo_lower %}
+                                                <span class="badge-riesgo" style="background: #fd7e14; color: white;">{{ riesgo }}</span>
+                                            {% elif 'moderado' in riesgo_lower or 'medio' in riesgo_lower %}
+                                                <span class="badge-riesgo" style="background: #ffc107; color: #333;">{{ riesgo }}</span>
+                                            {% else %}
+                                                <span class="badge-riesgo" style="background: #28a745; color: white;">{{ riesgo or 'N/A' }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn-icon me-1" onclick="verDetalle('{{ item.id }}')" title="Ver detalle" data-i18n-title="dashboard.historial.boton_ver_detalle_title">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="exportarPDF('{{ item.id }}')" title="Exportar PDF" data-i18n-title="dashboard.historial.boton_exportar_pdf_title">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-white-50" data-i18n="dashboard.historial.texto_ultimos_analisis">Últimos {{ historial|length }} análisis realizados</small>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-chart-line fa-4x text-white-50 mb-3"></i>
+                            <p class="text-white-50" data-i18n="dashboard.historial.sin_analisis_mensaje">No tienes análisis realizados todavía.</p>
+                            <a href="/analisis" class="btn btn-light rounded-pill px-4 mt-2" data-i18n="dashboard.historial.boton_comenzar_primer_analisis">
+                                <i class="fas fa-play-circle me-2"></i>Comenzar primer análisis
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver detalle -->
+<div class="modal fade" id="detalleModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content modal-glass">
+            <div class="modal-header">
+                <h5 class="modal-title text-white" data-i18n="dashboard.modal.titulo_detalle">
+                    <i class="fas fa-chart-bar me-2"></i>Detalle del Análisis
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-i18n-aria-label="dashboard.modal.cerrar"></button>
+            </div>
+            <div class="modal-body text-white" id="detalleBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden" data-i18n="dashboard.modal.cargando_estado">Cargando...</span>
+                    </div>
+                    <p class="mt-2" data-i18n="dashboard.modal.cargando_mensaje">Cargando detalles...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="dashboard.modal.boton_cerrar">Cerrar</button>
+                <button type="button" id="exportarDesdeModal" class="btn btn-danger" data-i18n="dashboard.modal.boton_exportar_pdf">
+                    <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let detalleIdActual = null;
+    
+    function verDetalle(id) {
+        detalleIdActual = id;
+        
+        // Mostrar loading
+        document.getElementById('detalleBody').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden" data-i18n="dashboard.modal.cargando_estado">Cargando...</span>
+                </div>
+                <p class="mt-2" data-i18n="dashboard.modal.cargando_mensaje">Cargando detalles...</p>
+            </div>
+        `;
+        
+        // Hacer petición AJAX
+        fetch('/api/analisis/' + id)
+            .then(function(response) { return response.json(); })
+            .then(function(item) {
+                if (item.error) {
+                    document.getElementById('detalleBody').innerHTML = '<div class="alert alert-danger" data-i18n="dashboard.modal.error_cargar">Error al cargar los detalles</div>';
+                    return;
+                }
+                
+                const resultado = item.resultado || {};
+                const puntuacion = resultado.puntuacion || item.puntuacion || 'N/A';
+                const nivelRiesgo = item.nivel_riesgo || 'Desconocido';
+                
+                let riesgoColor = '';
+                const riesgoLower = (nivelRiesgo || '').toLowerCase();
+                if (riesgoLower.includes('crítico') || riesgoLower.includes('muy alto')) {
+                    riesgoColor = '#dc3545';
+                } else if (riesgoLower.includes('alto')) {
+                    riesgoColor = '#fd7e14';
+                } else if (riesgoLower.includes('moderado') || riesgoLower.includes('medio')) {
+                    riesgoColor = '#ffc107';
+                } else {
+                    riesgoColor = '#28a745';
+                }
+                
+                let recomendacionesHtml = '';
+                if (resultado.recomendaciones && resultado.recomendaciones.length > 0) {
+                    recomendacionesHtml = '<ul class="mb-0" style="color: #ddd;" data-i18n="dashboard.modal.recomendaciones_lista">';
+                    for (var i = 0; i < resultado.recomendaciones.length; i++) {
+                        recomendacionesHtml += '<li style="margin-bottom: 8px;">' + resultado.recomendaciones[i] + '</li>';
+                    }
+                    recomendacionesHtml += '</ul>';
+                } else {
+                    recomendacionesHtml = '<p class="text-white-50" data-i18n="dashboard.modal.sin_recomendaciones">No hay recomendaciones disponibles</p>';
+                }
+                
+                let dictamenHtml = '';
+                if (resultado.dictamen_ia) {
+                    var dictamenTexto = resultado.dictamen_ia.replace(/\n/g, '<br>');
+                    dictamenHtml = '<div class="mt-4 p-3 rounded" style="background: rgba(0, 212, 255, 0.1); border-left: 4px solid #00d4ff;">' +
+                        '<strong data-i18n="dashboard.modal.dictamen_ia_titulo"><i class="fas fa-robot me-2"></i>Dictamen con IA:</strong>' +
+                        '<div class="mt-2 small" style="white-space: pre-wrap; line-height: 1.5;">' + dictamenTexto + '</div>' +
+                    '</div>';
+                }
+                
+                let codigoOwasHtml = '';
+                if (resultado.codigo_owas) {
+                    codigoOwasHtml = '<div class="mt-3 p-2 rounded" style="background: rgba(255,255,255,0.05);">' +
+                        '<strong data-i18n="dashboard.modal.codigo_owas_label">Código OWAS:</strong> ' + resultado.codigo_owas +
+                        '<small class="text-white-50" data-i18n="dashboard.modal.codigo_owas_formato"> (Formato: Espalda/Brazo/Piernas/Carga)</small>' +
+                    '</div>';
+                }
+                
+                document.getElementById('detalleBody').innerHTML = 
+                    '<div class="text-center p-3 rounded mb-4" style="background: ' + riesgoColor + ';">' +
+                        '<h3 class="mb-1" data-i18n="dashboard.modal.puntuacion_texto">Puntuación: ' + puntuacion + '</h3>' +
+                        '<p class="mb-0"><strong data-i18n="dashboard.modal.nivel_riesgo_label">Nivel de Riesgo:</strong> ' + nivelRiesgo + '</p>' +
+                    '</div>' +
+                    
+                    '<div class="row">' +
+                        '<div class="col-md-6 mb-3">' +
+                            '<div class="p-2 rounded" style="background: rgba(255,255,255,0.05);">' +
+                                '<small class="text-white-50" data-i18n="dashboard.modal.empresa_label">EMPRESA</small>' +
+                                '<div class="fw-bold">' + (item.empresa || 'N/A') + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="col-md-6 mb-3">' +
+                            '<div class="p-2 rounded" style="background: rgba(255,255,255,0.05);">' +
+                                '<small class="text-white-50" data-i18n="dashboard.modal.puesto_label">PUESTO</small>' +
+                                '<div class="fw-bold">' + (item.puesto || 'N/A') + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="col-md-6 mb-3">' +
+                            '<div class="p-2 rounded" style="background: rgba(255,255,255,0.05);">' +
+                                '<small class="text-white-50" data-i18n="dashboard.modal.evaluador_label">EVALUADOR</small>' +
+                                '<div class="fw-bold">' + (item.evaluador || 'N/A') + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="col-md-6 mb-3">' +
+                            '<div class="p-2 rounded" style="background: rgba(255,255,255,0.05);">' +
+                                '<small class="text-white-50" data-i18n="dashboard.modal.operario_label">OPERARIO</small>' +
+                                '<div class="fw-bold">' + (item.operario_nombre || 'N/A') + ' (' + (item.operario_edad || 'N/A') + ' años)</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    codigoOwasHtml +
+                    
+                    '<hr style="border-color: rgba(255,255,255,0.1);">' +
+                    
+                    '<h6 data-i18n="dashboard.modal.recomendaciones_titulo"><i class="fas fa-list-check me-2"></i>Recomendaciones</h6>' +
+                    recomendacionesHtml +
+                    dictamenHtml;
+                
+                var modal = new bootstrap.Modal(document.getElementById('detalleModal'));
+                modal.show();
+            })
+            .catch(function(error) {
+                document.getElementById('detalleBody').innerHTML = '<div class="alert alert-danger">Error al cargar los detalles: ' + error + '</div>';
+            });
+    }
+    
+    // FUNCIÓN MODIFICADA: Abre resultado_video.html con el ID y auto-imprime
+    function exportarPDF(id) {
+        if (id) {
+            // Guardar el ID en sessionStorage
+            sessionStorage.setItem('exportar_analisis_id', id);
+            // Abrir resultado_video en una nueva ventana
+            window.open('/resultado_video?print=1', '_blank');
+        } else {
+            alert('No se pudo exportar el PDF');
+        }
+    }
+    
+    var exportarBtn = document.getElementById('exportarDesdeModal');
+    if (exportarBtn) {
+        exportarBtn.addEventListener('click', function() {
+            if (detalleIdActual) {
+                exportarPDF(detalleIdActual);
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,724 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.8; }
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .gradient-bg-page {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        min-height: 100vh;
+        padding: 3rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .gradient-bg-page::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.15), transparent 50%);
+        pointer-events: none;
+    }
+    
+    .gradient-bg-page::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1), transparent 50%);
+        pointer-events: none;
+    }
+    
+    .glass-card-dark {
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+    }
+    
+    .form-control-dark {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control-dark:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 0.2rem rgba(118, 75, 162, 0.25);
+        color: white;
+    }
+    
+    .form-control-dark::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .form-select-dark {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .form-select-dark:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 0.2rem rgba(118, 75, 162, 0.25);
+        color: white;
+    }
+    
+    .form-select-dark option {
+        background: #1a1a2e;
+        color: white;
+    }
+    
+    .form-label {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .form-check-label {
+        color: white;
+    }
+    
+    .text-gradient {
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 200% auto;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-gradient:hover {
+        background-position: right center;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(118, 75, 162, 0.4);
+    }
+    
+    .btn-outline-gradient {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline-gradient:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .animate-float-slow {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .icon-bg {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+    
+    .card-option {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .card-option:hover {
+        transform: translateY(-5px);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    
+    /* Skeleton loader */
+    .skeleton-container {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+    
+    .skeleton-card {
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        min-width: 350px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .skeleton-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        border-top: 4px solid #00d4ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    
+    .skeleton-title {
+        color: white;
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+    }
+    
+    .skeleton-text {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+    
+    .skeleton-progress {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 20px;
+    }
+    
+    .skeleton-progress-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #00d4ff, #007aff);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    
+    .skeleton-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        gap: 10px;
+    }
+    
+    .skeleton-step {
+        flex: 1;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-align: center;
+    }
+    
+    .skeleton-step.active {
+        background: rgba(0, 212, 255, 0.2);
+        color: #00d4ff;
+    }
+    
+    .skeleton-step.completed {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+    
+    .is-invalid {
+        border-color: #dc3545 !important;
+    }
+    
+    textarea.form-control-dark {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+    
+    textarea.form-control-dark:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 0.2rem rgba(118, 75, 162, 0.25);
+        color: white;
+    }
+    
+    textarea.form-control-dark::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+</style>
+
+<div class="gradient-bg-page">
+    <!-- Elementos decorativos flotantes -->
+    <div class="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style="pointer-events: none;">
+        <div class="position-absolute" style="top: 10%; left: 5%; width: 300px; height: 300px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(50px); animation: pulse 8s ease-in-out infinite;"></div>
+        <div class="position-absolute" style="bottom: 10%; right: 5%; width: 400px; height: 400px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(60px); animation: pulse 6s ease-in-out infinite reverse;"></div>
+        <div class="position-absolute" style="top: 50%; left: 50%; width: 250px; height: 250px; background: rgba(255,255,255,0.15); border-radius: 50%; filter: blur(40px);"></div>
+    </div>
+    
+    <div class="container position-relative" style="z-index: 2;">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="glass-card-dark animate-float-slow">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="icon-bg mb-3">
+                                <i class="fas fa-upload fa-2x text-gradient"></i>
+                            </div>
+                            <h2 class="fw-bold text-gradient" data-i18n="video.title">Análisis por Video / Foto</h2>
+                            <p class="text-white-50" data-i18n="video.subtitle">Complete los datos para comenzar el análisis ergonómico</p>
+                        </div>
+
+                        <form method="post" action="/procesar" enctype="multipart/form-data" id="uploadForm">
+                            <h5 class="mt-3 text-white" data-i18n="video.method">Método de Análisis <span class="text-danger">*</span></h5>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="metodo" value="owas" id="owas">
+                                        <label class="form-check-label text-white" for="owas" data-i18n="method.owas.title">OWAS</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="metodo" value="rula" id="rula">
+                                        <label class="form-check-label text-white" for="rula" data-i18n="method.rula.title">RULA</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="metodo" value="reba" id="reba">
+                                        <label class="form-check-label text-white" for="reba" data-i18n="method.reba.title">REBA 3D</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="metodoError" class="text-danger small mb-2" style="display: none;">
+                                <i class="fas fa-exclamation-circle"></i> <span data-i18n="video.metodo_error">Debe seleccionar un método de análisis</span>
+                            </div>
+                            
+                            <!-- Campo oculto para normativa -->
+                            <input type="hidden" name="cumple_normativa" id="cumpleNormativa" value="false">
+                            
+                            <h5 class="mt-4 text-white" data-i18n="video.company">Datos de la Empresa <span class="text-danger">*</span></h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" data-i18n="video.company_name">Empresa</label>
+                                    <input type="text" name="empresa" class="form-control form-control-dark" id="empresaInput" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" data-i18n="video.position">Puesto</label>
+                                    <input type="text" name="puesto" class="form-control form-control-dark" id="puestoInput" required>
+                                </div>
+                            </div>
+                            
+                            <h5 class="mt-4 text-white" data-i18n="video.worker">Datos del Operario <span class="text-danger">*</span></h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" data-i18n="video.worker_name">Nombre</label>
+                                    <input type="text" name="operario_nombre" class="form-control form-control-dark" id="operarioInput" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" data-i18n="video.worker_age">Edad</label>
+                                    <input type="number" name="operario_edad" class="form-control form-control-dark" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" data-i18n="video.worker_seniority">Antigüedad</label>
+                                    <input type="text" name="operario_antiguedad" class="form-control form-control-dark" placeholder="Ej: 5 años" required>
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <label class="form-label" data-i18n="video.worker_evaluator">Evaluador</label>
+                                    <input type="text" name="evaluador" class="form-control form-control-dark" id="evaluadorInput" required>
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <label class="form-label" data-i18n="video.worker_pathologies">Patologías previas</label>
+                                    <input type="text" name="operario_patologias" class="form-control form-control-dark" placeholder="Dejar vacío si no">
+                                </div>
+                                <div class="col-md-6 mt-2">
+                                    <label class="form-label" data-i18n="video.worker_load">Peso de la carga (kg)</label>
+                                    <input type="number" name="peso_carga" class="form-control form-control-dark" value="0" step="1" min="0">
+                                    <small class="text-white-50" data-i18n="video.worker_load_help">Si no manipula carga, dejar en 0</small>
+                                </div>
+                            </div>
+                            
+                            <h5 class="mt-4 text-white" data-i18n="video.file">Archivo a Analizar <span class="text-danger">*</span></h5>
+                            <div class="mb-3">
+                                <label class="form-label" data-i18n="video.file_label">Video (mp4, avi, mov) o Foto (jpg, png)</label>
+                                <input type="file" name="archivo" id="archivo" class="form-control form-control-dark" accept=".mp4,.avi,.mov,.jpg,.jpeg,.png" required>
+                                <small class="text-white-50" data-i18n="video.file_help">Suba un video de la actividad laboral o una foto de la postura (Máx 100MB)</small>
+                            </div>
+                            
+                            <div id="progressContainer" style="display: none; margin-top: 20px;">
+                                <div class="progress">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);">0%</div>
+                                </div>
+                                <p id="progressText" class="text-center mt-2 small text-white-50" data-i18n="video.progress">Preparando...</p>
+                            </div>
+                            
+                            <button type="button" id="showModalBtn" class="btn btn-gradient w-100 mt-3 rounded-pill py-2 fw-semibold">
+                                <i class="fas fa-play-circle me-2"></i> <span data-i18n="video.analyze">Analizar</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Skeleton Loader -->
+<div id="skeletonLoader" class="skeleton-container">
+    <div class="skeleton-card">
+        <div class="skeleton-spinner"></div>
+        <h3 class="skeleton-title" data-i18n="skeleton.title">Analizando postura con IA</h3>
+        <p class="skeleton-text" id="skeletonMessage" data-i18n="skeleton.active">Procesando imagen/video...</p>
+        
+        <div class="skeleton-progress">
+            <div id="skeletonProgressBar" class="skeleton-progress-bar" style="width: 0%;"></div>
+        </div>
+        
+        <div class="skeleton-steps">
+            <div id="step1" class="skeleton-step" data-i18n="skeleton.step1">Detección</div>
+            <div id="step2" class="skeleton-step" data-i18n="skeleton.step2">Puntos articulares</div>
+            <div id="step3" class="skeleton-step" data-i18n="skeleton.step3">Cálculo de ángulos</div>
+            <div id="step4" class="skeleton-step" data-i18n="skeleton.step4">Generando informe</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Resolución SRT 886/2015 -->
+<div class="modal fade" id="normativeModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 1.5rem;">
+                <h5 class="modal-title text-gradient">
+                    <i class="fas fa-gavel me-2"></i> <span data-i18n="srt.title">Cumplimiento Normativo</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-i18n-aria-label="srt.cerrar"></button>
+            </div>
+            <div class="modal-body" style="color: white; padding: 1.5rem;">
+                <p><span data-i18n="srt.question">¿Desea que el informe cumpla con la</span> <strong class="text-gradient" data-i18n="srt.resolution">Resolución SRT 886/2015</strong> <span data-i18n="srt.protocol">(Protocolo de Ergonomía)?</span></p>
+                <p class="text-white-50 small" data-i18n="srt.description">Esto agregará las Planillas del Anexo I al reporte PDF y requerirá datos adicionales.</p>
+                
+                <!-- Campos adicionales (ocultos inicialmente) -->
+                <div id="normativeExtraFields" style="display: none; margin-top: 20px;">
+                    <hr style="border-color: rgba(255, 255, 255, 0.1);">
+                    <h6 class="text-gradient"><i class="fas fa-clipboard-list me-2"></i> <span data-i18n="srt.fields_title">Datos requeridos por la normativa SRT 886/2015:</span></h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.workers">Cantidad de trabajadores expuestos</label>
+                            <input type="number" name="cantidad_trabajadores" class="form-control form-control-dark" value="1" min="1">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.hours">Tiempo de exposición diaria (horas)</label>
+                            <input type="number" name="horas_exposicion" class="form-control form-control-dark" value="8" step="0.5" min="0">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.days">Frecuencia semanal (días)</label>
+                            <input type="number" name="dias_semana" class="form-control form-control-dark" value="5" min="1" max="7">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.weight">Peso de la carga (kg) - Planilla 2.A</label>
+                            <input type="number" name="peso_carga_srt" class="form-control form-control-dark" value="10" step="1" min="0">
+                            <small class="text-white-50" data-i18n="srt.weight_help">Si ya ingresó peso en datos del operario, se usará automáticamente</small>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.frequency">Frecuencia de levantamiento (por hora)</label>
+                            <input type="number" name="frecuencia_levantamiento" class="form-control form-control-dark" value="20" min="0">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.distance">Distancia vertical (cm)</label>
+                            <input type="number" name="distancia_vertical" class="form-control form-control-dark" value="50" min="0">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.standing">Tipo de bipedestación</label>
+                            <select name="tipo_bipedestacion" class="form-select form-select-dark">
+                                <option value="Fija" data-i18n="srt.standing_fixed">Fija (sin desplazamiento)</option>
+                                <option value="Con desplazamiento" data-i18n="srt.standing_moving">Con desplazamiento</option>
+                                <option value="Mixta" data-i18n="srt.standing_mixed">Mixta (sentado/bipedestación)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.thermal">Confort térmico</label>
+                            <select name="confort_termico" class="form-select form-select-dark">
+                                <option value="Adecuado" data-i18n="srt.thermal_adequate">Adecuado</option>
+                                <option value="Frío" data-i18n="srt.thermal_cold">Frío</option>
+                                <option value="Calor" data-i18n="srt.thermal_hot">Calor</option>
+                                <option value="Muy frío" data-i18n="srt.thermal_very_cold">Muy frío</option>
+                                <option value="Muy caluroso" data-i18n="srt.thermal_very_hot">Muy caluroso</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.contact">¿Hay estrés de contacto?</label>
+                            <select name="estres_contacto" class="form-select form-select-dark">
+                                <option value="No" data-i18n="srt.contact_no">No</option>
+                                <option value="Sí, ocasional" data-i18n="srt.contact_occasional">Sí, ocasional</option>
+                                <option value="Sí, frecuente" data-i18n="srt.contact_frequent">Sí, frecuente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.task_desc">Descripción de la tarea</label>
+                            <textarea name="descripcion_tarea" class="form-control form-control-dark" rows="2" data-i18n-placeholder="srt.task_desc"></textarea>
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label text-white-50" data-i18n="srt.observations">Observaciones adicionales</label>
+                            <textarea name="observaciones_srt" class="form-control form-control-dark" rows="2" data-i18n-placeholder="srt.observations"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 1.5rem;">
+                <button type="button" class="btn btn-outline-gradient" data-bs-dismiss="modal" data-i18n="srt.no">No, reporte simple</button>
+                <button type="button" id="btnAcceptNormative" class="btn btn-gradient px-4 py-2 rounded-pill" data-i18n="srt.yes">Sí, cumplir normativa</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Función para validar el formulario antes de mostrar el modal
+    function validarFormulario() {
+        let valido = true;
+        let errores = [];
+        
+        // Validar método seleccionado
+        const metodoSeleccionado = document.querySelector('input[name="metodo"]:checked');
+        if (!metodoSeleccionado) {
+            document.getElementById('metodoError').style.display = 'block';
+            valido = false;
+            errores.push('Debe seleccionar un método de análisis');
+        } else {
+            document.getElementById('metodoError').style.display = 'none';
+        }
+        
+        // Validar empresa
+        const empresa = document.getElementById('empresaInput').value.trim();
+        if (!empresa) {
+            document.getElementById('empresaInput').classList.add('is-invalid');
+            valido = false;
+            errores.push('Complete el campo "Empresa"');
+        } else {
+            document.getElementById('empresaInput').classList.remove('is-invalid');
+        }
+        
+        // Validar puesto
+        const puesto = document.getElementById('puestoInput').value.trim();
+        if (!puesto) {
+            document.getElementById('puestoInput').classList.add('is-invalid');
+            valido = false;
+            errores.push('Complete el campo "Puesto"');
+        } else {
+            document.getElementById('puestoInput').classList.remove('is-invalid');
+        }
+        
+        // Validar operario
+        const operario = document.getElementById('operarioInput').value.trim();
+        if (!operario) {
+            document.getElementById('operarioInput').classList.add('is-invalid');
+            valido = false;
+            errores.push('Complete el campo "Nombre del operario"');
+        } else {
+            document.getElementById('operarioInput').classList.remove('is-invalid');
+        }
+        
+        // Validar evaluador
+        const evaluador = document.getElementById('evaluadorInput').value.trim();
+        if (!evaluador) {
+            document.getElementById('evaluadorInput').classList.add('is-invalid');
+            valido = false;
+            errores.push('Complete el campo "Evaluador"');
+        } else {
+            document.getElementById('evaluadorInput').classList.remove('is-invalid');
+        }
+        
+        // Validar archivo
+        const archivo = document.getElementById('archivo').files.length;
+        if (archivo === 0) {
+            document.getElementById('archivo').classList.add('is-invalid');
+            valido = false;
+            errores.push('Seleccione un archivo (video o foto)');
+        } else {
+            document.getElementById('archivo').classList.remove('is-invalid');
+        }
+        
+        if (!valido && errores.length > 0) {
+            if (typeof showToast === 'function') {
+                showToast('⚠️ ' + errores[0], 'warning', 3000);
+            } else {
+                alert(errores[0]);
+            }
+        }
+        
+        return valido;
+    }
+    
+    // Mostrar modal antes de enviar el formulario
+    document.getElementById('showModalBtn').addEventListener('click', function() {
+        if (validarFormulario()) {
+            var modal = new bootstrap.Modal(document.getElementById('normativeModal'));
+            modal.show();
+        }
+    });
+    
+    // Manejar clic en "Sí, cumplir normativa"
+    document.getElementById('btnAcceptNormative').addEventListener('click', function() {
+        document.getElementById('normativeExtraFields').style.display = 'block';
+        
+        document.querySelector('#normativeModal .modal-footer').innerHTML = `
+            <button type="button" class="btn btn-outline-gradient" data-bs-dismiss="modal" data-i18n="srt.cancel">Cancelar</button>
+            <button type="button" id="btnConfirmNormative" class="btn btn-gradient px-4 py-2 rounded-pill" data-i18n="srt.confirm">Confirmar y continuar</button>
+        `;
+        
+        document.getElementById('btnConfirmNormative').addEventListener('click', function() {
+            document.getElementById('cumpleNormativa').value = 'true';
+            document.getElementById('normativeModal').style.display = 'none';
+            document.querySelector('.modal-backdrop').remove();
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            enviarFormulario();
+        });
+    });
+    
+    function enviarFormulario() {
+        var formData = new FormData(document.getElementById('uploadForm'));
+        var progressDiv = document.getElementById('progressContainer');
+        var progressBar = document.getElementById('progressBar');
+        var progressText = document.getElementById('progressText');
+        var submitBtn = document.getElementById('showModalBtn');
+        var skeletonLoader = document.getElementById('skeletonLoader');
+        var skeletonProgressBar = document.getElementById('skeletonProgressBar');
+        var skeletonMessage = document.getElementById('skeletonMessage');
+        
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressText.textContent = 'Subiendo archivo... 0%';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+        
+        var xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                var percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+                progressText.textContent = 'Subiendo archivo... ' + percent + '%';
+            }
+        });
+        
+        xhr.upload.addEventListener('load', function() {
+            progressDiv.style.display = 'none';
+            skeletonLoader.style.display = 'flex';
+            
+            let progress = 0;
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            let currentStep = 0;
+            
+            document.getElementById(steps[0]).classList.add('active');
+            skeletonMessage.textContent = 'Detectando persona en el archivo...';
+            
+            const interval = setInterval(() => {
+                progress += 8;
+                if (progress > 100) progress = 100;
+                skeletonProgressBar.style.width = progress + '%';
+                
+                if (progress >= 25 && currentStep < 1) {
+                    document.getElementById(steps[currentStep]).classList.remove('active');
+                    document.getElementById(steps[currentStep]).classList.add('completed');
+                    currentStep++;
+                    document.getElementById(steps[currentStep]).classList.add('active');
+                    skeletonMessage.textContent = 'Extrayendo puntos articulares...';
+                }
+                if (progress >= 50 && currentStep < 2) {
+                    document.getElementById(steps[currentStep]).classList.remove('active');
+                    document.getElementById(steps[currentStep]).classList.add('completed');
+                    currentStep++;
+                    document.getElementById(steps[currentStep]).classList.add('active');
+                    skeletonMessage.textContent = 'Calculando ángulos y puntuaciones...';
+                }
+                if (progress >= 75 && currentStep < 3) {
+                    document.getElementById(steps[currentStep]).classList.remove('active');
+                    document.getElementById(steps[currentStep]).classList.add('completed');
+                    currentStep++;
+                    document.getElementById(steps[currentStep]).classList.add('active');
+                    skeletonMessage.textContent = 'Generando informe ergonómico...';
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        });
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                document.open();
+                document.write(xhr.responseText);
+                document.close();
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast('❌ Error en el servidor: ' + xhr.status, 'error', 4000);
+                } else {
+                    alert('Error en el servidor: ' + xhr.status);
+                }
+                location.reload();
+            }
+        };
+        
+        xhr.onerror = function() {
+            if (typeof showToast === 'function') {
+                showToast('❌ Error de conexión al servidor', 'error', 4000);
+            } else {
+                alert('Error de conexión al servidor');
+            }
+            location.reload();
+        };
+        
+        xhr.open('POST', '/procesar');
+        xhr.send(formData);
+    }
+</script>
+{% endblock %}

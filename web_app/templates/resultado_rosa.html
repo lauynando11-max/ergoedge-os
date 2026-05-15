@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-chart-bar"></i> Resultados ROSA</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert {% if resultado.puntuacion_final <= 4 %}alert-success{% elif resultado.puntuacion_final <= 6 %}alert-warning{% else %}alert-danger{% endif %} text-center">
+                    <h3>{{ resultado.puntuacion_final }}/10</h3>
+                    <p class="mb-0"><strong>Nivel de Riesgo: {{ resultado.nivel_riesgo }}</strong></p>
+                    <p class="small mb-0">{{ resultado.accion }}</p>
+                </div>
+                
+                <h5>📊 Puntuaciones por Componente</h5>
+                <table class="table table-bordered">
+                    <tr><td>Silla</td><td>{{ resultado.silla }}/10</td></tr>
+                    <tr><td>Monitor</td><td>{{ resultado.monitor }}/10</td></tr>
+                    <tr><td>Teclado</td><td>{{ resultado.teclado }}/10</td></tr>
+                    <tr><td>Mouse</td><td>{{ resultado.mouse }}/10</td></tr>
+                    {% if resultado.factor_tiempo %}
+                    <tr class="table-warning"><td>Factor Tiempo de Uso</td><td>+1 punto</td></tr>
+                    {% endif %}
+                </table>
+                
+                <h5>📋 Recomendaciones</h5>
+                <ul>
+                    {% for rec in resultado.recomendaciones %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+                
+                <div class="mt-4">
+                    <a href="/" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Nueva Evaluación
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

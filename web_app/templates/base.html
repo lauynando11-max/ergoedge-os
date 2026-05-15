@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERGOEDGE OS - Análisis Ergonómico con IA</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <!-- Translations JS -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
+    
+    <!-- CSS Personalizado -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+        
+        /* Navbar Transparente */
+        .navbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5rem 0;
+            z-index: 1030;
+            background: transparent;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white !important;
+            letter-spacing: -0.02em;
+            text-decoration: none;
+        }
+        
+        .navbar-brand i {
+            color: white;
+            margin-right: 8px;
+        }
+        
+        .badge-ia {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Botones de usuario */
+        .btn-user-outline {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-user-outline:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        
+        .btn-user-solid {
+            background: white;
+            color: #0f172a;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-user-solid:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-1px);
+        }
+        
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46a0);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Selector de idiomas */
+        .lang-selector {
+            display: flex;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            border-radius: 30px;
+            padding: 4px 8px;
+        }
+        
+        .lang-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .lang-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .lang-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+        
+        /* Footer */
+        .footer {
+            background: #0f172a;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2rem 0;
+            color: #94a3b8;
+        }
+        
+        /* Contenedor principal */
+        .main-content {
+            min-height: calc(100vh - 200px);
+        }
+        
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+        
+        /* Toast notifications */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 280px;
+            max-width: 350px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: toastSlideIn 0.3s ease forwards;
+            backdrop-filter: blur(10px);
+        }
+        
+        .toast-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border-left: 4px solid #34d399;
+        }
+        
+        .toast-error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border-left: 4px solid #f87171;
+        }
+        
+        .toast-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border-left: 4px solid #fbbf24;
+        }
+        
+        .toast-info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border-left: 4px solid #60a5fa;
+        }
+        
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+        
+        .toast-message {
+            flex: 1;
+        }
+        
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes toastSlideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.25rem;
+            }
+            .navbar {
+                padding: 1rem 0;
+            }
+            .lang-selector {
+                padding: 2px 6px;
+            }
+            .lang-btn {
+                padding: 2px 6px;
+                font-size: 0.65rem;
+            }
+            .toast-notification {
+                left: 20px;
+                right: 20px;
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar Transparente -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-brain"></i> <span data-i18n="nav.brand">ERGOEDGE OS</span>
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge-ia d-none d-sm-inline-flex">
+                    <i class="fas fa-microchip"></i> <span data-i18n="nav.ia_badge">IA Integrada</span>
+                </span>
+                
+                <!-- Selector de idiomas -->
+                <div class="lang-selector">
+                    <button class="lang-btn" onclick="setLanguage('es')">🇪🇸 ES</button>
+                    <button class="lang-btn" onclick="setLanguage('en')">🇬🇧 EN</button>
+                    <button class="lang-btn" onclick="setLanguage('pt')">🇵🇹 PT</button>
+                </div>
+                
+                {% if usuario %}
+                <!-- Usuario logueado -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-user-solid rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle me-1"></i>{{ usuario.nombre.split()[0] }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-2"></i><span data-i18n="nav.dashboard">Dashboard</span>
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="/logout">
+                            <i class="fas fa-sign-out-alt me-2"></i><span data-i18n="nav.logout">Cerrar Sesión</span>
+                        </a></li>
+                    </ul>
+                </div>
+                {% else %}
+                <!-- Usuario no logueado -->
+                <a href="/login" class="btn btn-sm btn-user-outline rounded-pill px-3">
+                    <i class="fas fa-sign-in-alt me-1"></i><span data-i18n="nav.login">Ingresar</span>
+                </a>
+                <a href="/registro" class="btn btn-sm btn-gradient rounded-pill px-3">
+                    <i class="fas fa-user-plus me-1"></i><span data-i18n="nav.register">Registrarse</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <div class="container-fluid px-0">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-0">&copy; 2026 <span data-i18n="nav.brand">ERGOEDGE OS</span> - <span data-i18n="footer.copyright">Ingeniería de Factores Humanos</span></p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="mb-0 small"><span data-i18n="footer.powered">Powered by YOLOv11 + Gemini IA</span></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Toast Notification System -->
+    <script>
+        function showToast(message, type = 'success', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            
+            let icon = '';
+            switch(type) {
+                case 'success':
+                    icon = '<i class="fas fa-check-circle toast-icon"></i>';
+                    break;
+                case 'error':
+                    icon = '<i class="fas fa-exclamation-circle toast-icon"></i>';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle toast-icon"></i>';
+                    break;
+                case 'info':
+                    icon = '<i class="fas fa-info-circle toast-icon"></i>';
+                    break;
+                default:
+                    icon = '<i class="fas fa-bell toast-icon"></i>';
+            }
+            
+            toast.innerHTML = `
+                ${icon}
+                <span class="toast-message">${message}</span>
+                <i class="fas fa-times" style="cursor: pointer; opacity: 0.7; font-size: 0.8rem;"></i>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            toast.querySelector('.fa-times').addEventListener('click', () => {
+                toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            });
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+        
+        // Actualizar botón activo del idioma
+        function updateActiveLangButton() {
+            const currentLang = localStorage.getItem('ergo_lang') || 'es';
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if ((currentLang === 'es' && btn.textContent.includes('ES')) ||
+                    (currentLang === 'en' && btn.textContent.includes('EN')) ||
+                    (currentLang === 'pt' && btn.textContent.includes('PT'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateActiveLangButton();
+            
+            // Mostrar toast de bienvenida si es primera visita
+            const welcomeShown = sessionStorage.getItem('welcome_toast_shown');
+            if (!welcomeShown) {
+                setTimeout(() => {
+                    showToast(t('toast.welcome'), 'success', 4000);
+                }, 500);
+                sessionStorage.setItem('welcome_toast_shown', 'true');
+            }
+        });
+        
+        // Escuchar cambios de idioma
+        document.addEventListener('languageChanged', function() {
+            updateActiveLangButton();
+        });
+    </script>
+</body>
+</html>
