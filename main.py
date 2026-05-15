@@ -28,7 +28,7 @@ from Methods.metodologias.rosa import evaluar_rosa, recopilar_datos_rosa_interac
 from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
 
 # ==================== CONFIGURACIÓN DE GEMINI ====================
-from google import genai
+import google.generativeai as genai
 
 API_KEY_GEMINI = os.getenv('GEMINI_API_KEY', "AIzaSyBkZ47zhVjrYrDdmZBxFs3GGdAY6ZY198o")
 GEMINI_MODEL = "gemini-2.5-flash"
