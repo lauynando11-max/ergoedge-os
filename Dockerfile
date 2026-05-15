@@ -1,9 +1,17 @@
 FROM python:3.10-slim
 
-# Usar los paquetes correctos para Debian Trixie
+# Instalar todas las dependencias necesarias para WeasyPrint y OpenCV
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
