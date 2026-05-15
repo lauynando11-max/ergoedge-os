@@ -1,37 +1,20 @@
-# Usar una imagen base de Python
 FROM python:3.10-slim
 
-# Instalar las dependencias del sistema que necesita WeasyPrint
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libcairo2 \
     libffi-dev \
-    libgdk-pixbuf2.0-0 \
-    libxml2-dev \
-    libxslt1-dev \
-    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
-# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar los archivos de requisitos primero (para mejor caching)
 COPY requirements.txt .
-
-# Instalar las dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto del código de la aplicación
 COPY . .
 
-# Crear directorios necesarios
 RUN mkdir -p uploads reports capturas_riesgo static/frames
 
-# Exponer el puerto
 EXPOSE 5000
 
-# Comando para ejecutar la aplicación
 CMD ["python", "web_flask.py"]
