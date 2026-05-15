@@ -1339,9 +1339,11 @@ def exportar_pdf():
 
 
 if __name__ == '__main__':
+    import os
+    port = int(os.getenv('PORT', 5000))
     print("=" * 50)
     print("🚀 ERGOEDGE OS - Servidor Web (Flask)")
     print("=" * 50)
-    print("🌐 Abrir en navegador: http://127.0.0.1:5000")
+    print(f"🌐 Abrir en navegador: http://0.0.0.0:{port}")
     print("=" * 50)
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
