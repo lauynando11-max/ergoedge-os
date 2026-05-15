@@ -341,7 +341,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 print("📥 Cargando modelo YOLO11 Pose...")
 try:
     # Usar el modelo más liviano (descarga ~40MB)
-   modelo_yolo = YOLO('yolo11x-pose.pt')
+    modelo_yolo = YOLO('yolo11x-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
     modelo_yolo.overrides['iou'] = 0.6
     modelo_yolo.overrides['max_det'] = 1
