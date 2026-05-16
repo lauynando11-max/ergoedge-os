@@ -10,7 +10,8 @@ import base64
 import time
 import traceback
 from jinja2 import Template
-from weasyprint import HTML
+# from weasyprint import HTML
+# WeasyPrint eliminado temporalmente
 
 # ============================================================
 # MÓDULO 0: DETECCIÓN DE MÉTODO Y CONVERSIÓN DE RULA A OWAS
