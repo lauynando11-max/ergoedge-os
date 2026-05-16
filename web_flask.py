@@ -336,21 +336,33 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB límite
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Cargar modelo YOLO
-# Cargar modelo YOLO (descarga automática)
+# ==================== CARGA DEL MODELO YOLO (FORZADO) ====================
 print("📥 Cargando modelo YOLO11 Pose...")
+import torch
+from ultralytics import YOLO
+
+# Forzar a PyTorch a aceptar el modelo grande
+torch.serialization.add_safe_globals(['ultralytics.nn.tasks.PoseModel'])
+
+modelo_yolo = None
 try:
-    # Usar el modelo más liviano (descarga ~40MB)
     modelo_yolo = YOLO('yolo11x-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
     modelo_yolo.overrides['iou'] = 0.6
     modelo_yolo.overrides['max_det'] = 1
-    print("✅ Modelo YOLO11n-pose cargado correctamente")
+    print("✅ Modelo YOLO11x-pose cargado correctamente")
 except Exception as e:
-    print(f"❌ Error cargando modelo: {e}")
-    print("⚠️ El modelo se descargará automáticamente en el primer uso")
-    modelo_yolo = YOLO('yolo11n-pose.pt')
-
+    print(f"⚠️ Error cargando yolo11x: {e}")
+    print("🔄 Intentando con modelo yolo11n...")
+    try:
+        modelo_yolo = YOLO('yolo11n-pose.pt')
+        modelo_yolo.overrides['conf'] = 0.4
+        modelo_yolo.overrides['iou'] = 0.6
+        modelo_yolo.overrides['max_det'] = 1
+        print("✅ Modelo YOLO11n-pose cargado como respaldo")
+    except Exception as e2:
+        print(f"❌ Error fatal cargando cualquier modelo: {e2}")
+        modelo_yolo = None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
