@@ -1,7 +1,8 @@
-FROM python:3.10-slim
+cat > ~/ergoedge-os/Dockerfile << 'EOF'
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
 
 RUN apt-get update && apt-get install -y \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
@@ -13,7 +14,6 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir torch==2.0.1 torchvision==0.15.2
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar el modelo
@@ -25,4 +25,6 @@ RUN mkdir -p uploads reports capturas_riesgo static/frames
 
 EXPOSE 5000
 
-CMD ["python", "web_flask.py"]
+# Usar Gunicorn en lugar de Flask directamente
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "web_flask:app"]
+EOF
