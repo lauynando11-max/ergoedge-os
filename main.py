@@ -37,13 +37,13 @@ GEMINI_MODEL = "gemini-2.5-flash"
 def validar_api_gemini():
     """Valida que la API key de Gemini funcione correctamente"""
     try:
-        cliente = genai.Client(api_key=API_KEY_GEMINI)
+        genai.configure(api_key=API_KEY_GEMINI)
         print("✅ API Key de Gemini validada correctamente")
-        return cliente
+        return True
     except Exception as e:
         print(f"⚠️ Advertencia: Error con API Key de Gemini: {e}")
         print("   El sistema usará dictamen de respaldo")
-        return None
+        return False
 
 
 cliente_gemini = validar_api_gemini()
@@ -51,7 +51,7 @@ cliente_gemini = validar_api_gemini()
 
 def generar_dictamen_con_gemini(datos_owas, operario):
     """Genera dictamen experto usando Gemini (para OWAS)"""
-    if cliente_gemini is None:
+    if not cliente_gemini:
         print("⚠️ Gemini no disponible, usando dictamen de respaldo")
         return generar_dictamen_fallback(datos_owas, operario)
 
@@ -107,10 +107,8 @@ Por favor, emití un dictamen profesional con:
 """
 
     try:
-        response = cliente_gemini.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=f"{system_instruction}\n\n{user_prompt}",
-        )
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(f"{system_instruction}\n\n{user_prompt}")
         if response and response.text:
             return response.text
         else:
@@ -192,7 +190,7 @@ def generar_dictamen_gemini_unificado(metodo, resultados, datos_operario, datos_
     Returns:
         dictamen en texto plano
     """
-    if cliente_gemini is None:
+    if not cliente_gemini:
         print(f"⚠️ Gemini no disponible, usando dictamen de respaldo para {metodo}")
         return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
     
@@ -323,10 +321,8 @@ Por favor, emití un dictamen profesional con:
         return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
     
     try:
-        response = cliente_gemini.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=f"{system_instruction}\n\n{user_prompt}",
-        )
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(f"{system_instruction}\n\n{user_prompt}")
         if response and response.text:
             return response.text
         else:
@@ -929,7 +925,7 @@ if __name__ == "__main__":
         historial_evolucion = []
         mejores_momentos = []
         ultimo_frame_procesado = -30
-        keypoints_anterior = None  # <--- AGREGADO: variable para frame anterior
+        keypoints_anterior = None  # variable para frame anterior
 
     # Variables RULA (solo se usan si metodo_elegido == 2)
     if metodo_elegido == 2:
@@ -969,13 +965,12 @@ if __name__ == "__main__":
 
     # ==================== FUNCIÓN PARA PROCESAR UN FRAME ====================
     def procesar_frame(frame, frame_num, is_foto=False):
-        def procesar_frame(frame, frame_num, is_foto=False):
-            global frames_con_persona, peor_riesgo_nivel, angulo_espalda_peor, angulo_brazo_peor
-            global datos_peor_momento, conteo_riesgos, historial_evolucion, mejores_momentos
-            global muestras_posturales, resultados_rula, mejores_momentos_rula
-            global resultados_reba, mejores_momentos_reba, reba_calc, carga, acople
-            global keypoints_anterior, codigo_carga_constante
-        
+        global frames_con_persona, peor_riesgo_nivel, angulo_espalda_peor, angulo_brazo_peor
+        global datos_peor_momento, conteo_riesgos, historial_evolucion, mejores_momentos
+        global muestras_posturales, resultados_rula, mejores_momentos_rula
+        global resultados_reba, mejores_momentos_reba, reba_calc, carga, acople
+        global keypoints_anterior, codigo_carga_constante
+
         results = modelo_yolo(frame, verbose=False)
         frame_display = frame.copy()
         
@@ -1020,7 +1015,6 @@ if __name__ == "__main__":
                     print(f"   🔄 Torsión: {torsion_data['angulo']}° hacia {torsion_data['direccion']} (+{torsion_data['incremento']})")
                 
                 # ========== CARGA DINÁMICA ==========
-                # Usar keypoints_anterior (puede ser None en primer frame)
                 carga_data = detectar_carga_dinamica(keypoints, keypoints_anterior, codigo_carga_constante)
                 codigo_carga = carga_data['codigo_carga']
                 estado_carga = carga_data['descripcion']
