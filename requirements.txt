@@ -6,7 +6,7 @@ flask-session==0.5.0
 werkzeug>=2.3.7
 opencv-python==4.8.1.78
 numpy==1.24.3
-ultralytics==8.0.207
+ultralytics==8.0.221
 google-generativeai==0.3.2
 python-dotenv==1.0.0
 gunicorn==21.2.0
