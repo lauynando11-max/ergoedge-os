@@ -341,10 +341,9 @@ print("📥 Cargando modelo YOLO11 Pose...")
 import torch
 from ultralytics import YOLO
 
-# Forzar a PyTorch a aceptar el modelo grande
-torch.serialization.add_safe_globals(['ultralytics.nn.tasks.PoseModel'])
-
 modelo_yolo = None
+
+# Intentar cargar yolo11x
 try:
     modelo_yolo = YOLO('yolo11x-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
@@ -364,9 +363,9 @@ except Exception as e:
         print(f"❌ Error fatal cargando cualquier modelo: {e2}")
         modelo_yolo = None
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+if modelo_yolo is None:
+    print("❌ NO HAY MODELO DISPONIBLE. El sistema no funcionará.")
+    exit(1)
 
 # ==================== FUNCIONES DE PROCESAMIENTO ====================
 
