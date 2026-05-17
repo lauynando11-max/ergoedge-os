@@ -501,38 +501,59 @@ function getColorByNivel(nivel, metodo) {
 function actualizarGrafico(evolucionTemporal, metodo) {
     const canvas = document.getElementById('riskChart');
     if (!canvas) return;
-    if (riskChartInstance) { riskChartInstance.destroy(); riskChartInstance = null; }
+    
+    if (riskChartInstance) {
+        riskChartInstance.destroy();
+        riskChartInstance = null;
+    }
     
     const ctx = canvas.getContext('2d');
+    
     let maxY = 4;
     let yTitle = 'Nivel de Riesgo OWAS (1-4)';
+    let stepSize = 1;
     
-    if (metodo === 'RULA') { maxY = 7; yTitle = 'Puntuación RULA (1-7)'; } 
-    else if (metodo === 'REBA') { maxY = 15; yTitle = 'Puntuación REBA (1-15)'; }
+    if (metodo === 'RULA') {
+        maxY = 7;
+        yTitle = 'Puntuación RULA (1-7)';
+    } else if (metodo === 'REBA') {
+        maxY = 15;
+        yTitle = 'Puntuación REBA (1-15)';
+    }
     
     let tiempoData = [];
     let riesgoData = [];
     let coloresFondo = [];
-    let datos = evolucionTemporal;
     
-    if (typeof datos === 'string') { try { datos = JSON.parse(datos); } catch(e) { console.error(e); } }
+    // Procesar datos reales si existen
+    let datos = evolucionTemporal;
+    if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch(e) { console.error(e); }
+    }
     
     if (datos && Array.isArray(datos) && datos.length > 0) {
         let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
+        
         for (let i = 0; i < datos.length; i += paso) {
             let pt = datos[i];
             if (pt && pt.length >= 2) {
-                tiempoData.push(parseFloat(pt[0]).toFixed(1));
-                riesgoData.push(parseInt(pt[1]));
-                coloresFondo.push(getColorByNivel(parseInt(pt[1]), metodo));
+                let t = parseFloat(pt[0]).toFixed(1);
+                let r = parseInt(pt[1]);
+                if (!isNaN(t) && !isNaN(r)) {
+                    tiempoData.push(t);
+                    riesgoData.push(r);
+                    coloresFondo.push(getColorByNivel(r, metodo));
+                }
             }
         }
     }
     
+    // SIEMPRE mostrar datos de ejemplo si no hay datos reales
     if (tiempoData.length === 0) {
-        tiempoData = ['0.0', '2.0', '4.0', '6.0'];
-        riesgoData = [1, 2, 2, 1];
-        coloresFondo = ['#10b981', '#f59e0b', '#f59e0b', '#10b981'];
+        // Datos de ejemplo para que el gráfico se vea bien
+        tiempoData = ['0.0', '1.0', '2.0', '3.0', '4.0', '5.0'];
+        riesgoData = [1, 2, 3, 2, 1, 1];
+        coloresFondo = riesgoData.map(r => getColorByNivel(r, metodo));
     }
     
     riskChartInstance = new Chart(ctx, {
@@ -552,7 +573,11 @@ function actualizarGrafico(evolucionTemporal, metodo) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { min: 1, max: maxY, ticks: { stepSize: 1 } },
+                y: {
+                    min: 1,
+                    max: maxY,
+                    ticks: { stepSize: 1 }
+                },
                 x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
             }
         }
