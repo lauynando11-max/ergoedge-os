@@ -8,7 +8,8 @@ import json
 from datetime import datetime
 from contextlib import contextmanager
 
-DB_PATH = 'ergoedge.db'
+import os
+DB_PATH = '/app/instance/ergoedge.db'
 
 
 @contextmanager
