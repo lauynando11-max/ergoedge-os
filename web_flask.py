@@ -3,6 +3,16 @@ ERGOEDGE OS - Servidor Web con Flask
 Soporte para OWAS, RULA, REBA y ROSA
 """
 
+# 1. PARCHE DE SEGURIDAD CRÍTICO PARA PYTORCH 2.6+ (Agregar al inicio de todo)
+import torch
+try:
+    import torch.serialization
+    # Agregamos Sequential a la lista de confianza que exige el error del log
+    torch.serialization.add_safe_globals([torch.nn.modules.container.Sequential])
+    print("✅ Safe globals configurado correctamente para PyTorch 2.6+.")
+except Exception as e:
+    print(f"⚠️ Error al configurar safe globals: {e}")
+
 import sys
 import os
 import tempfile
