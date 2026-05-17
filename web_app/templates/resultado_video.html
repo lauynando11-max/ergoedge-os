@@ -536,45 +536,67 @@ function actualizarGrafico(evolucionTemporal, metodo) {
         riskChartInstance = null;
     }
     
-    const ctx = canvas.getContext('2d');
-    
-    let maxY = 4;
-    let yTitle = 'Nivel de Riesgo OWAS (1-4)';
-    let stepSize = 1;
-    
-    if (metodo === 'RULA') {
-        maxY = 7;
-        yTitle = 'Puntuación RULA (1-7)';
-    } else if (metodo === 'REBA') {
-        maxY = 15;
-        yTitle = 'Puntuación REBA (1-15)';
-        stepSize = 1;
-    } else {
-        maxY = 4;
-        yTitle = 'Nivel de Riesgo OWAS (1-4)';
-    }
-    
-    let puntos = [];
     let tiempoData = [];
     let riesgoData = [];
     let coloresFondo = [];
     
-    if (evolucionTemporal && evolucionTemporal.length > 0) {
-        puntos = simplificarDatosEvolucion(evolucionTemporal);
+    let datos = evolucionTemporal;
+    if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch(e) { console.error(e); }
+    }
+    
+    if (datos && Array.isArray(datos) && datos.length > 0) {
+        // Si hay más de 150 puntos, calculamos un salto proporcional para que entren bien
+        let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
         
-        if (puntos.length > 0) {
-            tiempoData = puntos.map(item => item[0].toFixed(1));
-            riesgoData = puntos.map(item => item[1]);
-            coloresFondo = puntos.map(item => getColorByNivel(item[1], metodo));
-        } else if (evolucionTemporal.length > 0) {
-            tiempoData = [evolucionTemporal[0][0].toFixed(1), evolucionTemporal[evolucionTemporal.length - 1][0].toFixed(1)];
-            riesgoData = [evolucionTemporal[0][1], evolucionTemporal[evolucionTemporal.length - 1][1]];
-            coloresFondo = [
-                getColorByNivel(evolucionTemporal[0][1], metodo),
-                getColorByNivel(evolucionTemporal[evolucionTemporal.length - 1][1], metodo)
-            ];
+        for (let i = 0; i < datos.length; i += paso) {
+            let pt = datos[i];
+            if (pt && pt.length >= 2) {
+                let t = parseFloat(pt[0]).toFixed(1);
+                let r = parseInt(pt[1]);
+                if (!isNaN(t) && !isNaN(r)) {
+                    tiempoData.push(t);
+                    riesgoData.push(r);
+                    coloresFondo.push(typeof getColorByNivel === 'function' ? getColorByNivel(r, metodo) : '#ef4444');
+                }
+            }
         }
     }
+    
+    if (tiempoData.length === 0) {
+        tiempoData = ['0.0', '2.0', '4.0', '6.0'];
+        riesgoData = [1, 2, 2, 1];
+        coloresFondo = ['#10b981', '#f59e0b', '#f59e0b', '#10b981'];
+    }
+    
+    const ctx = canvas.getContext('2d');
+    riskChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: tiempoData,
+            datasets: [{
+                label: metodo === 'RULA' ? 'Puntuación RULA' : (metodo === 'REBA' ? 'Puntuación REBA' : 'Nivel de Riesgo OWAS'),
+                data: riesgoData,
+                backgroundColor: coloresFondo,
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 1,
+                    max: metodo === 'RULA' ? 7 : (metodo === 'REBA' ? 15 : 4),
+                    ticks: { stepSize: 1 }
+                },
+                x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
+            }
+        }
+    });
+}
     
     if (tiempoData.length === 0) {
         tiempoData = ['0'];
@@ -993,7 +1015,76 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     html += '<li>Ley 19.587/72 - Higiene y Seguridad en el Trabajo</li>';
     html += '<li>Decreto 351/79 - Reglamentario de la Ley 19.587</li>';
     html += '<li>Resolución SRT 295/2003 - Programa de Ergonomía Integrado</li>';
-    html += '<li>Resolución SRT 886/2015 - Protocolo de Ergonomía</li>';
+    function actualizarGrafico(evolucionTemporal, metodo) {
+    const canvas = document.getElementById('riskChart');
+    if (!canvas) return;
+    
+    if (riskChartInstance) {
+        riskChartInstance.destroy();
+        riskChartInstance = null;
+    }
+    
+    let tiempoData = [];
+    let riesgoData = [];
+    let coloresFondo = [];
+    
+    let datos = evolucionTemporal;
+    if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch(e) { console.error(e); }
+    }
+    
+    if (datos && Array.isArray(datos) && datos.length > 0) {
+        // Si hay más de 150 puntos, calculamos un salto proporcional para que entren bien
+        let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
+        
+        for (let i = 0; i < datos.length; i += paso) {
+            let pt = datos[i];
+            if (pt && pt.length >= 2) {
+                let t = parseFloat(pt[0]).toFixed(1);
+                let r = parseInt(pt[1]);
+                if (!isNaN(t) && !isNaN(r)) {
+                    tiempoData.push(t);
+                    riesgoData.push(r);
+                    coloresFondo.push(typeof getColorByNivel === 'function' ? getColorByNivel(r, metodo) : '#ef4444');
+                }
+            }
+        }
+    }
+    
+    if (tiempoData.length === 0) {
+        tiempoData = ['0.0', '2.0', '4.0', '6.0'];
+        riesgoData = [1, 2, 2, 1];
+        coloresFondo = ['#10b981', '#f59e0b', '#f59e0b', '#10b981'];
+    }
+    
+    const ctx = canvas.getContext('2d');
+    riskChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: tiempoData,
+            datasets: [{
+                label: metodo === 'RULA' ? 'Puntuación RULA' : (metodo === 'REBA' ? 'Puntuación REBA' : 'Nivel de Riesgo OWAS'),
+                data: riesgoData,
+                backgroundColor: coloresFondo,
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 1,
+                    max: metodo === 'RULA' ? 7 : (metodo === 'REBA' ? 15 : 4),
+                    ticks: { stepSize: 1 }
+                },
+                x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
+            }
+        }
+    });
+}
     html += '<li>Norma ISO 11226 - Evaluación de posturas de trabajo</li>';
     html += '<li>Norma ISO 11228 - Manipulación manual de cargas</li>';
     html += '</ul>';
@@ -1025,7 +1116,13 @@ function cargarYRenderizar(id, autoPrint = false) {
             }
             
             const resultado = item.resultado || {};
-            const metodo = item.metodo || 'OWAS';
+            const metodo = item.metodo || 'OWAS'; // <-- Primero declaramos el método
+
+            // Después extraemos la serie de tiempo
+            let evolucionTemporal = item.evolucion_temporal || resultado.evolucion_temporal || [];
+
+            // Y al final de todo, con las dos variables listas, llamamos al gráfico
+            actualizarGrafico(evolucionTemporal, metodo);
             
             document.getElementById('operarioNombre').innerHTML = (item.operario_nombre || 'N/A') + ' (' + (item.operario_edad || 'N/A') + ' años)';
             document.getElementById('puestoValor').innerHTML = item.puesto || 'N/A';
