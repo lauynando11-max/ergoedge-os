@@ -629,58 +629,39 @@ function cargarYRenderizar(id, autoPrint = false) {
         .then(item => {
             const resultado = item.resultado || {};
             const metodo = item.metodo || 'OWAS';
-            const dictamenTextoIA = resultado.dictamen_ia || '';
             
             // ========================================================
-            // 🤖 MOTOR EXTRACTOR INTELIGENTE POR REGEX (ANTI N/A)
+            // CORREGIDO: Ahora toma los datos directamente de item
             // ========================================================
-            let opNombre = item.operario_nombre || resultado.operario_nombre || item.nombre || resultado.nombre || '';
+            let opNombre = item.operario_nombre || resultado.operario_nombre || '';
             let opPuesto = item.puesto || resultado.puesto || '';
             let opEvaluador = item.evaluador || resultado.evaluador || '';
-            let opEdad = item.operario_edad || resultado.operario_edad || item.edad || '';
+            let opEdad = item.operario_edad || resultado.operario_edad || '';
+            let opAntiguedad = item.operario_antiguedad || resultado.operario_antiguedad || '';
+            let opPatologias = item.operario_patologias || resultado.operario_patologias || 'Ninguna';
             
-            // Si el backend guardó un N/A estricto, lo forzamos a vacío para que el Regex actúe
-            if (opNombre === 'N/A') opNombre = '';
-            if (opPuesto === 'N/A') opPuesto = '';
-            if (opEvaluador === 'N/A') opEvaluador = '';
-            if (opEdad === 'N/A' || opEdad === 0) opEdad = '';
-
-            if (dictamenTextoIA) {
-                if (!opNombre) {
-                    const matchNombre = dictamenTextoIA.match(/Operario:\s*([^\n\r.]+)/i);
-                    if (matchNombre) opNombre = matchNombre[1].trim();
-                }
-                if (!opPuesto) {
-                    const matchPuesto = dictamenTextoIA.match(/Puesto:\s*([^\n\r.]+)/i);
-                    if (matchPuesto) opPuesto = matchPuesto[1].trim();
-                }
-                if (!opEvaluador) {
-                    const matchEvaluador = dictamenTextoIA.match(/Evaluador:\s*([^\n\r.]+)/i);
-                    if (matchEvaluador) opEvaluador = matchEvaluador[1].trim();
-                }
-            }
-            
-            // Valores por defecto finales si no se encontró nada de nada
+            // Valores por defecto
             opNombre = opNombre || 'N/A';
             opPuesto = opPuesto || 'N/A';
             opEvaluador = opEvaluador || 'N/A';
             opEdad = opEdad || 'N/A';
-
-            // Inyectamos de forma segura en el DOM de la Ficha
+            opAntiguedad = opAntiguedad || 'N/A';
+            
+            // Inyectar en el DOM
             if (document.getElementById('operarioNombre')) {
                 document.getElementById('operarioNombre').innerHTML = opEdad !== 'N/A' ? `${opNombre} (${opEdad} años)` : opNombre;
             }
             if (document.getElementById('puestoValor')) document.getElementById('puestoValor').innerHTML = opPuesto;
             if (document.getElementById('evaluadorValor')) document.getElementById('evaluadorValor').innerHTML = opEvaluador;
-            if (document.getElementById('antiguedadValor')) document.getElementById('antiguedadValor').innerHTML = item.operario_antiguedad || resultado.operario_antiguedad || 'N/A';
-            if (document.getElementById('patologiasValor')) document.getElementById('patologiasValor').innerHTML = item.operario_patologias || resultado.operario_patologias || 'Ninguna';
+            if (document.getElementById('antiguedadValor')) document.getElementById('antiguedadValor').innerHTML = opAntiguedad;
+            if (document.getElementById('patologiasValor')) document.getElementById('patologiasValor').innerHTML = opPatologias;
             
-            // Renderizamos Metodo y Empresa
+            // Método y Empresa
             if (document.getElementById('metodoValue')) document.getElementById('metodoValue').innerHTML = metodo;
             const empresaInput = document.getElementById('companyNameInput');
-            if (empresaInput) empresaInput.value = item.empresa && item.empresa !== 'N/A' ? item.empresa : '';
-
-            // Renderizar Gráfico e Imágenes de Riesgo
+            if (empresaInput) empresaInput.value = item.empresa || '';
+            
+            // Evolución temporal y gráfico
             let evolucionTemporal = item.evolucion_temporal || resultado.evolucion_temporal || [];
             if (evolucionTemporal.length === 0 && resultado.puntuacion) {
                 evolucionTemporal = [[0, 1], [5, resultado.puntuacion], [10, 1]];
@@ -720,22 +701,34 @@ function cargarYRenderizar(id, autoPrint = false) {
                 }
             }
             
-            // Mostrar bloque de dictamen IA
+            // Código OWAS
+            const codigoOwasContainer = document.getElementById('codigoOwasContainer');
+            if (codigoOwasContainer) {
+                if (resultado.codigo_owas && metodo === 'OWAS') {
+                    const codigoOwasValor = document.getElementById('codigoOwasValor');
+                    if (codigoOwasValor) codigoOwasValor.innerHTML = resultado.codigo_owas;
+                    codigoOwasContainer.style.display = 'block';
+                } else {
+                    codigoOwasContainer.style.display = 'none';
+                }
+            }
+            
+            // Dictamen IA
             const dictamenContainer = document.getElementById('dictamenContainer');
-            if (dictamenContainer && dictamenTextoIA) {
+            if (dictamenContainer && resultado.dictamen_ia) {
                 const dictamenTexto = document.getElementById('dictamenTexto');
-                if (dictamenTexto) dictamenTexto.innerHTML = dictamenTextoIA.replace(/\n/g, '<br>');
+                if (dictamenTexto) dictamenTexto.innerHTML = resultado.dictamen_ia.replace(/\n/g, '<br>');
                 dictamenContainer.style.display = 'block';
             }
             
-            // Mostrar bloque de Planillas SRT
+            // Planillas SRT
             const planillasContainer = document.getElementById('planillasContainer');
             if (planillasContainer && (resultado.cumple_normativa === true || item.cumple_normativa === true)) {
                 planillasContainer.innerHTML = generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo);
                 planillasContainer.style.display = 'block';
             }
             
-            // Fotos de riesgo
+            // Imágenes de riesgo
             const imagenesContainer = document.getElementById('imagenesRiesgoContainer');
             const imagenesGrid = document.getElementById('imagenesGrid');
             const imagenesRiesgo = resultado.imagenes_riesgo || item.imagenes_riesgo || [];
@@ -751,6 +744,11 @@ function cargarYRenderizar(id, autoPrint = false) {
             }
 
             if (autoPrint) setTimeout(() => window.print(), 500);
+        })
+        .catch(error => {
+            console.error('Error cargando análisis:', error);
+            const riesgoTexto = document.getElementById('riesgoTexto');
+            if (riesgoTexto) riesgoTexto.innerHTML = 'Error de conexión al cargar el análisis';
         });
 }
 
