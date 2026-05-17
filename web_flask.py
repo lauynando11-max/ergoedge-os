@@ -38,7 +38,12 @@ import time
 # ==== Variables de entorno ====
 from dotenv import load_dotenv
 load_dotenv()
+# ==== CONFIGURACIÓN DE EXTENSIONES PERMITIDAS ====
+ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 # ==== IMPORTAR BASE DE DATOS SQLITE ====
 from database import (
     init_db, crear_usuario, obtener_usuario_por_token,
