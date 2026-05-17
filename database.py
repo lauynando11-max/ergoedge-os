@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 import os
 DB_PATH = '/app/instance/ergoedge.db'
-
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 @contextmanager
 def get_db():
