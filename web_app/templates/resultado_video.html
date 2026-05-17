@@ -207,6 +207,7 @@
     .risk-banner h2 { font-size: 2rem; font-weight: 800; margin: 0; }
     .risk-banner p { margin: 0.5rem 0 0; opacity: 0.9; }
     
+    /* CONGELAMOS EL TAMAÑO AQUÍ PARA DETENER EL BUCLE INFINITO DE CHART.JS */
     .chart-container {
         background: white;
         border-radius: 16px;
@@ -214,7 +215,11 @@
         margin: 1.5rem 0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         border: 1px solid var(--border-color);
-        min-height: 300px;
+        position: relative;
+        height: 320px;
+        max-height: 320px;
+        width: 100%;
+        overflow: hidden;
     }
     
     .images-grid {
@@ -435,7 +440,7 @@
         
         <h3 class="section-title" data-i18n="resultado.evolucion_temporal">Evolución Temporal del Riesgo</h3>
         <div class="chart-container">
-            <canvas id="riskChart" width="800" height="300" style="max-width: 100%; height: auto;"></canvas>
+            <canvas id="riskChart"></canvas>
             <p class="text-muted text-center mt-2" style="font-size: 0.75rem;" data-i18n="resultado.evolucion_desc">Evolución del nivel de riesgo durante el análisis</p>
         </div>
         
@@ -549,32 +554,39 @@ function actualizarGrafico(evolucionTemporal, metodo) {
     } else if (metodo === 'REBA') {
         maxY = 15;
         yTitle = 'Puntuación REBA (1-15)';
-        stepSize = 1;
-    } else {
-        maxY = 4;
-        yTitle = 'Nivel de Riesgo OWAS (1-4)';
     }
     
-    let puntos = [];
     let tiempoData = [];
     let riesgoData = [];
     let coloresFondo = [];
     
-    if (evolucionTemporal && evolucionTemporal.length > 0) {
-        puntos = simplificarDatosEvolucion(evolucionTemporal);
+    let datos = evolucionTemporal;
+    if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch(e) { console.error(e); }
+    }
+    
+    if (datos && Array.isArray(datos) && datos.length > 0) {
+        // FILTRO DE DENSIDAD DINÁMICO
+        let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
         
-        if (puntos.length > 0) {
-            tiempoData = puntos.map(item => item[0].toFixed(1));
-            riesgoData = puntos.map(item => item[1]);
-            coloresFondo = puntos.map(item => getColorByNivel(item[1], metodo));
+        for (let i = 0; i < datos.length; i += paso) {
+            let pt = datos[i];
+            if (pt && pt.length >= 2) {
+                let t = parseFloat(pt[0]).toFixed(1);
+                let r = parseInt(pt[1]);
+                if (!isNaN(t) && !isNaN(r)) {
+                    tiempoData.push(t);
+                    riesgoData.push(r);
+                    coloresFondo.push(getColorByNivel(r, metodo));
+                }
+            }
         }
     }
     
-    // Datos de ejemplo si no hay datos reales (para mostrar el gráfico)
     if (tiempoData.length === 0) {
-        tiempoData = ['0', '1', '2', '3', '4', '5'];
-        riesgoData = [1, 1, 2, 2, 1, 1];
-        coloresFondo = riesgoData.map(r => getColorByNivel(r, metodo));
+        tiempoData = ['0.0', '2.0', '4.0', '6.0'];
+        riesgoData = [1, 2, 2, 1];
+        coloresFondo = ['#10b981', '#f59e0b', '#f59e0b', '#10b981'];
     }
     
     riskChartInstance = new Chart(ctx, {
@@ -585,67 +597,21 @@ function actualizarGrafico(evolucionTemporal, metodo) {
                 label: yTitle,
                 data: riesgoData,
                 backgroundColor: coloresFondo,
-                borderColor: coloresFondo.map(c => c),
                 borderWidth: 1,
-                borderRadius: 8,
-                barPercentage: 0.7,
-                categoryPercentage: 0.8
+                borderRadius: 4,
+                barPercentage: 0.6
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false, // CAMBIADO A FALSE PARA QUE SE CO ACOMODE AL CONTENEDOR CSS FISS
             scales: {
                 y: {
                     min: 1,
                     max: maxY,
-                    stepSize: stepSize,
-                    ticks: {
-                        stepSize: stepSize,
-                        callback: function(value) {
-                            if (Number.isInteger(value)) {
-                                return value;
-                            }
-                            return null;
-                        }
-                    },
-                    title: { display: true, text: yTitle, font: { weight: 'bold' } }
+                    ticks: { stepSize: 1 }
                 },
-                x: {
-                    title: { display: true, text: 'Tiempo (segundos)', font: { weight: 'bold' } },
-                    ticks: {
-                        maxTicksLimit: 20,
-                        autoSkip: true
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const nivel = context.raw;
-                            let categoria = '';
-                            if (metodo === 'OWAS') {
-                                if (nivel === 1) categoria = ' - Riesgo Bajo';
-                                else if (nivel === 2) categoria = ' - Riesgo Moderado';
-                                else if (nivel === 3) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 4) categoria = ' - Riesgo Crítico';
-                            } else if (metodo === 'RULA') {
-                                if (nivel <= 2) categoria = ' - Riesgo Bajo';
-                                else if (nivel <= 4) categoria = ' - Riesgo Medio';
-                                else if (nivel <= 6) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 7) categoria = ' - Riesgo Muy Alto';
-                            } else if (metodo === 'REBA') {
-                                if (nivel === 1) categoria = ' - Riesgo Bajo';
-                                else if (nivel <= 3) categoria = ' - Riesgo Medio';
-                                else if (nivel <= 7) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 8) categoria = ' - Riesgo Muy Alto';
-                            }
-                            return `Tiempo: ${context.label}s - Nivel: ${nivel}${categoria}`;
-                        }
-                    }
-                },
-                legend: { position: 'top' }
+                x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
             }
         }
     });
@@ -680,7 +646,7 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     
     const peso = parseFloat(resultado.peso_carga) || 10;
     const frecuencia = parseInt(resultado.frecuencia_levantamiento) || 20;
-    const distancia = parseInt(resultado.distancia_vertical) || 50;
+    const distancia = parseInt(resultado.distancia_vertical) || 50; // CORREGIDA VARIABLE ABAJO
     const bipedestacion = resultado.tipo_bipedestacion || 'Fija';
     const confort = resultado.confort_termico || 'Adecuado';
     const estresContacto = resultado.estres_contacto || 'No';
@@ -729,17 +695,207 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     let hayRiesgoNoTolerable = (riesgoPesoTolerable === "NO TOLERABLE" || riesgoBorgTolerable === "NO TOLERABLE" || riesgoPosturasTolerable === "NO TOLERABLE" || riesgoConfortTolerable === "NO TOLERABLE" || riesgoEstresTolerable === "NO TOLERABLE");
     
     const fechaFormateada = new Date().toLocaleDateString('es-AR');
-    
     let html = '';
     
     html += '<div class="planilla-section">';
     html += '<h3 style="color: var(--primary-dark); margin-top: 0;">📋 ANEXO I - PROTOCOLO DE ERGONOMÍA</h3>';
     html += '<p style="margin-bottom: 1rem; color: #555;">Resolución SRT 886/2015 - Superintendencia de Riesgos del Trabajo</p>';
     
-    // ... (resto de la función generarPlanillasSRT se mantiene igual)
-    // Por razones de espacio, mantengo la función completa como estaba
+    html += '<h4 class="planilla-title">Planilla N° 1: Identificación de Factores de Riesgo</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead><tr><th>Factor de Riesgo</th><th>Tareas habituales</th><th>Tiempo de la jornada</th><th>Tarea 1</th><th>Tarea 2</th><th>Tarea 3</th><th>Tiempo total exposición</th><th>Nivel de Riesgo</th></tr></thead>';
+    html += '<tbody>';
     
+    const factores = [
+        { codigo: 'A', nombre: 'Levantamiento manual de cargas', presente: (metodo === 'OWAS'), tiempo: horasExposicion, riesgo: riesgoPesoTolerable, color: colorPeso },
+        { codigo: 'B', nombre: 'Empuje y arrastre de cargas', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'C', nombre: 'Transporte manual de cargas', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'D', nombre: 'Bipedestación', presente: true, tiempo: horasExposicion, riesgo: bipedestacion === 'Fija' ? 'NO TOLERABLE' : 'Tolerable', color: bipedestacion === 'Fija' ? '#ffcccc' : '#ccffcc' },
+        { codigo: 'E', nombre: 'Movimientos repetitivos', presente: (metodo === 'RULA' || metodo === 'REBA'), tiempo: horasExposicion, riesgo: riesgoBorgTolerable, color: colorBorg },
+        { codigo: 'F', nombre: 'Posturas forzadas', presente: true, tiempo: horasExposicion, riesgo: riesgoPosturasTolerable, color: colorPosturas },
+        { codigo: 'G', nombre: 'Vibraciones', presente: false, tiempo: 0, riesgo: 'No aplica', color: '#ccffcc' },
+        { codigo: 'H', nombre: 'Confort térmico', presente: true, tiempo: horasExposicion, riesgo: riesgoConfortTolerable, color: colorConfort },
+        { codigo: 'I', nombre: 'Estrés de contacto', presente: (estresContacto !== 'No'), tiempo: horasExposicion, riesgo: riesgoEstresTolerable, color: colorEstres }
+    ];
+    
+    factores.forEach(factor => {
+        html += '<tr>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;"><strong>' + factor.codigo + '</strong> - ' + factor.nombre + '</td>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? descripcionTarea : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? horasExposicion + ' h' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? 'X' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (factor.presente ? horasExposicion + ' h' : '-') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd; background: ' + factor.color + ';">' + factor.riesgo + '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    html += '<h4 class="planilla-title">Planilla N° 2: Evaluación Inicial</h4>';
+    
+    function generarPlanilla2(titulo, preguntas, respuestas) {
+        let h = '<h5 style="margin-top: 1rem; margin-bottom: 0.5rem;">' + titulo + '</h5>';
+        h += '<table class="modern-table">';
+        h += '<thead><tr><th>N°</th><th>Descripción</th><th style="text-align:center">SÍ</th><th style="text-align:center">NO</th></tr></thead>';
+        h += '<tbody>';
+        for (let i = 0; i < preguntas.length; i++) {
+            let esSi = respuestas[i] === true;
+            let esNo = respuestas[i] === false;
+            h += '<tr>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (i+1) + '</td>';
+            h += '<td style="padding: 8px; border: 1px solid #ddd;">' + preguntas[i] + '</td>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (esSi ? 'X' : '') + '</td>';
+            h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (esNo ? 'X' : '') + '</td>';
+            h += '</tr>';
+        }
+        h += '</tbody></table>';
+        return h;
+    }
+    
+    if (metodo === 'OWAS') {
+        html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
+            'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
+            'Frecuencia > 12 levantamientos por hour',
+            'Distancia vertical > 75 cm',
+            'Desplazamiento horizontal > 50 cm',
+            'Postura forzada durante el levantamiento'
+        ], [peso > 25, frecuencia > 12, distancia > 75, false, (nivelRiesgo.includes('ALTO'))]); // CORREGIDA VARIABLE ACÁ
+    } else {
+        html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
+            'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
+            'Frecuencia > 12 levantamientos por hora',
+            'Distancia vertical > 75 cm'
+        ], [false, false, false]);
+    }
+    
+    html += generarPlanilla2('2.D - Bipedestación', [
+        'Bipedestación durante más de 2 horas continuas sin pausas',
+        'Superficie de trabajo dura sin tapiz antifatiga',
+        'Imposibilidad de alternar con posición sentada'
+    ], [bipedestacion === 'Fija', bipedestacion === 'Fija', bipedestacion === 'Fija']);
+    
+    if (metodo === 'RULA' || metodo === 'REBA') {
+        html += generarPlanilla2('2.E - Movimientos repetitivos (Escala de Borg CR-10)', [
+            'Ciclo de trabajo < 30 segundos',
+            'Movimientos repetitivos del mismo segmento corporal > 4 horas por día',
+            'Nivel de esfuerzo percibido > 3 (Escala de Borg)',
+            'Nivel de esfuerzo percibido ≥ 7 (requiere acción inmediata)'
+        ], [escalaBorg >= 4, escalaBorg >= 4, escalaBorg >= 4, escalaBorg >= 7]);
+        html += '<p class="text-muted small">Escala de Borg CR-10: 0=Nada, 0.5=Muy muy leve, 1=Muy leve, 2=Leve, 3=Moderado, 4=Algo fuerte, 5=Fuerte, 6=, 7=Muy fuerte, 8=, 9=, 10=Extremadamente fuerte. Nivel ≥ 4 requiere evaluación. Nivel 7 requiere acción inmediata.</p>';
+    } else {
+        html += generarPlanilla2('2.E - Movimientos repetitivos', [
+            'Ciclo de trabajo < 30 segundos',
+            'Movimientos repetitivos del mismo segmento corporal > 4 horas por día'
+        ], [false, false]);
+    }
+    
+    html += generarPlanilla2('2.F - Posturas forzadas', [
+        'Flexión de tronco > 20°',
+        'Flexión de cuello > 20°',
+        'Elevación de brazos sobre el nivel de los hombros',
+        'Posturas mantenidas por más de 2 horas continuas'
+    ], [
+        (nivelRiesgo.includes('ALTO') || nivelRiesgo.includes('CRÍTICO')),
+        (nivelRiesgo.includes('ALTO') || nivelRiesgo.includes('CRÍTICO')),
+        (metodo === 'RULA' && puntuacionNumerica >= 4),
+        true
+    ]);
+    
+    html += generarPlanilla2('2.H - Confort térmico (Gráfico de Fanger)', [
+        'Temperatura fuera del rango 20-24°C',
+        'Humedad relativa fuera del rango 40-65%',
+        'Corrientes de aire o asimetría térmica'
+    ], [confort !== 'Adecuado', confort !== 'Adecuado', false]);
+    html += '<p class="text-muted small">Zona de confort según gráfico de Fanger: Temperatura 20-24°C, Humedad relativa 40-65%.</p>';
+    
+    html += generarPlanilla2('2.I - Estrés de contacto', [
+        'Puntos de apoyo con bordes cortantes o duros',
+        'Herramientas sin superficies ergonómicas',
+        'Presión mantenida sobre tejidos blandos'
+    ], [estresContacto !== 'No', estresContacto !== 'No', estresContacto !== 'No']);
+    
+    html += '<div class="risk-banner" style="margin-top: 1rem; background: ' + (hayRiesgoNoTolerable ? '#dc3545' : '#28a745') + '; color: white; padding: 15px; text-align: center; border-radius: 8px;">';
+    html += '<h4>CONCLUSIÓN DE LA EVALUACIÓN INICIAL</h4>';
+    html += '<p>' + (hayRiesgoNoTolerable ? '⚠️ Se han identificado RIESGOS NO TOLERABLES. Debe procederse a una evaluación específica y completar las Planillas 3 y 4.' : '✅ Todos los riesgos identificados son TOLERABLES. No se requiere acción inmediata.') + '</p>';
     html += '</div>';
+    
+    html += '<h4 class="planilla-title">Planilla N° 3: Medidas Correctivas y Preventivas</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead><tr><th>N°</th><th>Medidas Preventivas / Correctivas</th><th style="text-align:center">SÍ / NO</th><th>Observaciones</th></tr></thead>';
+    html += '<tbody>';
+    
+    let medidas = [];
+    let medidaIdx = 1;
+    
+    if (metodo === 'OWAS' && peso > 10) {
+        medidas.push({ desc: 'Capacitación en técnicas seguras de levantamiento de cargas', implementada: false, obs: 'Pendiente programar' });
+        medidas.push({ desc: 'Reducción del peso de la carga o instalación de ayudas mecánicas', implementada: false, obs: 'Evaluar viabilidad técnica' });
+    }
+    if (bipedestacion === 'Fija') {
+        medidas.push({ desc: 'Instalación de tapiz antifatiga y asiento tipo banquetas', implementada: false, obs: 'Solicitar cotización' });
+        medidas.push({ desc: 'Rotación de tareas cada 60 minutos', implementada: false, obs: 'Coordinar con supervisión' });
+    }
+    if ((metodo === 'RULA' || metodo === 'REBA') && escalaBorg >= 4) {
+        medidas.push({ desc: 'Pausas activas cada 60 minutos', implementada: false, obs: 'Implementar programa de pausas' });
+        medidas.push({ desc: 'Capacitación en pausas activas y autoejercicios', implementada: false, obs: 'Gestionar con servicio de medicina laboral' });
+    }
+    if (escalaBorg >= 7) {
+        medidas.push({ desc: 'Rotación de tareas cada 30 minutos', implementada: false, obs: 'Revisar proceso productivo' });
+        medidas.push({ desc: 'Evaluación biomecánica específica', implementada: false, obs: 'Contratar especialista' });
+    }
+    if (confort !== 'Adecuado') {
+        medidas.push({ desc: 'Evaluación de carga térmica (índice WBGT o T° efectiva)', implementada: false, obs: 'Contratar especialista' });
+        medidas.push({ desc: 'Instalación de sistemas de climatización o ventilación', implementada: false, obs: 'Presupuestar' });
+    }
+    if (estresContacto !== 'No') {
+        medidas.push({ desc: 'Instalación de superficies acolchadas o ergonómicas', implementada: false, obs: 'Identificar puntos críticos' });
+        medidas.push({ desc: 'Provisión de elementos de protección personal (guantes)', implementada: false, obs: 'Solicitar a compras' });
+    }
+    
+    if (medidas.length === 0) {
+        html += '<tr><td colspan="4" style="text-align:center; padding: 8px; border: 1px solid #ddd;">No se requieren medidas preventivas/correctivas específicas</td></tr>';
+    } else {
+        medidas.forEach(med => {
+            html += '<tr>';
+            html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + medidaIdx++ + '</td>';
+            html += '<td style="padding: 8px; border: 1px solid #ddd;">' + med.desc + '</td>';
+            html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (med.implementada ? 'SÍ' : 'NO') + '</td>';
+            html += '<td style="padding: 8px; border: 1px solid #ddd;">' + med.obs + '</td>';
+            html += '</tr>';
+        });
+    }
+    
+    html += '</tbody></table>';
+    
+    html += '<h4 class="planilla-title">Planilla N° 4: Matriz de Seguimiento</h4>';
+    html += '<table class="modern-table">';
+    html += '<thead><tr><th>N° M.C.P</th><th>Nombre del Puesto</th><th>Fecha de Evaluación</th><th>Nivel de Riesgo</th><th>Fecha de Medida Administrativa</th><th>Fecha de Medida de Ingeniería</th><th>Fecha de Cierre</th></tr></thead>';
+    html += '<tbody>';
+    
+    for (let i = 1; i <= Math.max(medidas.length, 3); i++) {
+        let nivelRiesgoFinal = hayRiesgoNoTolerable ? 'NO TOLERABLE' : 'Tolerable';
+        let bgColor = hayRiesgoNoTolerable ? '#ffcccc' : '#ccffcc';
+        
+        html += '<tr>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + i + '</td>';
+        html += '<td style="padding: 8px; border: 1px solid #ddd;">' + (resultado.puesto || 'No especificado') + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + fechaFormateada + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd; background: ' + bgColor + ';">' + nivelRiesgoFinal + '</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    
+    if (observaciones) {
+        html += '<div class="dictamen-box" style="margin-top: 1rem;"><h5>Observaciones adicionales</h5><p>' + observaciones + '</p></div>';
+    }
+    
+    html += '<div class="dictamen-box" style="margin-top: 1rem;"><h5>Marco Normativo Aplicable</h5><ul><li>Ley 19.587/72 - Higiene y Seguridad en el Trabajo</li><li>Decreto 351/79 - Reglamentario de la Ley 19.587</li><li>Resolución SRT 295/2003 - Programa de Ergonomía Integrado</li><li>Norma ISO 11226 - Evaluación de posturas de trabajo</li><li>Norma ISO 11228 - Manipulación manual de cargas</li></ul><hr><p class="small text-muted">Fecha de evaluación: ' + fechaFormateada + '</p><p class="small text-muted">Documento generado por ERGOEDGE OS - Cumplimiento Res. SRT 886/2015</p></div>';
+    html += '</div>';
+    
     return html;
 }
 
@@ -765,10 +921,9 @@ function cargarYRenderizar(id, autoPrint = false) {
             const resultado = item.resultado || {};
             const metodo = item.metodo || 'OWAS';
             
-            // Cargar evolución temporal (puede venir de item o de resultado)
+            // CORREGIDO: BUSCAMOS LA TELEMETRÍA REAL EN ITEM PRIMERO
             let evolucionTemporal = item.evolucion_temporal || resultado.evolucion_temporal || [];
             
-            // Si no hay datos, crear datos de ejemplo para mostrar el gráfico
             if (evolucionTemporal.length === 0 && resultado.puntuacion) {
                 evolucionTemporal = [[0, 1], [5, resultado.puntuacion], [10, 1]];
             }
