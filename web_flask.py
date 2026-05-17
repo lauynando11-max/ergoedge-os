@@ -336,14 +336,22 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB límite
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ==================== CARGA DEL MODELO YOLO (FORZADO) ====================
+# ==================== CARGA DEL MODELO YOLO (FUNCIONA SEGURO) ====================
 print("📥 Cargando modelo YOLO11 Pose...")
 import torch
 from ultralytics import YOLO
 
-modelo_yolo = None
+# --- INICIO DE LA SOLUCIÓN DEFINITIVA ---
+print("   Aplicando fix de compatibilidad para PyTorch 2.6...")
+try:
+    from ultralytics.nn.tasks import PoseModel
+    torch.serialization.add_safe_globals([PoseModel])
+    print("   ✅ Safe globals configurado correctamente.")
+except Exception as e:
+    print(f"   ⚠️ Advertencia: No se pudo configurar safe globals: {e}")
+# --- FIN DE LA SOLUCIÓN ---
 
-# Intentar cargar yolo11x
+modelo_yolo = None
 try:
     modelo_yolo = YOLO('yolo11x-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
@@ -351,17 +359,8 @@ try:
     modelo_yolo.overrides['max_det'] = 1
     print("✅ Modelo YOLO11x-pose cargado correctamente")
 except Exception as e:
-    print(f"⚠️ Error cargando yolo11x: {e}")
-    print("🔄 Intentando con modelo yolo11n...")
-    try:
-        modelo_yolo = YOLO('yolo11n-pose.pt')
-        modelo_yolo.overrides['conf'] = 0.4
-        modelo_yolo.overrides['iou'] = 0.6
-        modelo_yolo.overrides['max_det'] = 1
-        print("✅ Modelo YOLO11n-pose cargado como respaldo")
-    except Exception as e2:
-        print(f"❌ Error fatal cargando cualquier modelo: {e2}")
-        modelo_yolo = None
+    print(f"❌ Error fatal cargando el modelo: {e}")
+    modelo_yolo = None
 
 if modelo_yolo is None:
     print("❌ NO HAY MODELO DISPONIBLE. El sistema no funcionará.")
