@@ -865,22 +865,30 @@ if __name__ == "__main__":
     if not op_patologias:
         op_patologias = "Ninguna informada"
 
-    # ==================== CARGA DEL MODELO YOLO ====================
+       # ==================== CARGA DEL MODELO YOLO ====================
     print("\n📥 Cargando modelo YOLO11 Pose...")
+    import torch
+    from ultralytics import YOLO
+
+    # --- INICIO DE LA SOLUCIÓN DEFINITIVA ---
+    print("   Aplicando fix de compatibilidad para PyTorch 2.6...")
     try:
-        modelo_yolo = YOLO('yolo11x-pose.pt')  # 33 keypoints con nudillos para muñeca
+        from ultralytics.nn.tasks import PoseModel
+        torch.serialization.add_safe_globals([PoseModel])
+        print("   ✅ Safe globals configurado correctamente.")
+    except Exception as e:
+        print(f"   ⚠️ Advertencia: No se pudo configurar safe globals: {e}")
+    # --- FIN DE LA SOLUCIÓN ---
+
+    try:
+        modelo_yolo = YOLO('yolo11x-pose.pt')
         modelo_yolo.overrides['conf'] = 0.4
         modelo_yolo.overrides['iou'] = 0.6
         modelo_yolo.overrides['max_det'] = 1
         print("✅ Modelo YOLO11x-pose cargado correctamente")
     except Exception as e:
-        print(f"⚠️ Error cargando modelo: {e}")
-        try:
-            modelo_yolo = YOLO('yolo11m-pose.pt')
-            print("✅ Modelo YOLO11m-pose cargado correctamente")
-        except Exception as e2:
-            print(f"❌ Error cargando modelo: {e2}")
-            exit()
+        print(f"❌ Error fatal cargando el modelo: {e}")
+        exit()
 
     # ==================== CARGA DE ENTRADA (VIDEO o FOTO) ====================
     if tipo_entrada == 1:
