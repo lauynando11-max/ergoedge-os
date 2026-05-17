@@ -546,7 +546,6 @@ function actualizarGrafico(evolucionTemporal, metodo) {
     }
     
     if (datos && Array.isArray(datos) && datos.length > 0) {
-        // Si hay más de 150 puntos, calculamos un salto proporcional para que entren bien
         let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
         
         for (let i = 0; i < datos.length; i += paso) {
@@ -593,87 +592,6 @@ function actualizarGrafico(evolucionTemporal, metodo) {
                     ticks: { stepSize: 1 }
                 },
                 x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
-            }
-        }
-    });
-}
-    
-    if (tiempoData.length === 0) {
-        tiempoData = ['0'];
-        riesgoData = [1];
-        coloresFondo = [getColorByNivel(1, metodo)];
-    }
-    
-    riskChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: tiempoData,
-            datasets: [{
-                label: yTitle,
-                data: riesgoData,
-                backgroundColor: coloresFondo,
-                borderColor: coloresFondo.map(c => c),
-                borderWidth: 1,
-                borderRadius: 8,
-                barPercentage: 0.7,
-                categoryPercentage: 0.8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    min: 1,
-                    max: maxY,
-                    stepSize: stepSize,
-                    ticks: {
-                        stepSize: stepSize,
-                        callback: function(value) {
-                            if (Number.isInteger(value)) {
-                                return value;
-                            }
-                            return null;
-                        }
-                    },
-                    title: { display: true, text: yTitle, font: { weight: 'bold' } }
-                },
-                x: {
-                    title: { display: true, text: 'Tiempo (segundos)', font: { weight: 'bold' } },
-                    ticks: {
-                        callback: function(value) {
-                            return value;
-                        }
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const nivel = context.raw;
-                            let categoria = '';
-                            if (metodo === 'OWAS') {
-                                if (nivel === 1) categoria = ' - Riesgo Bajo';
-                                else if (nivel === 2) categoria = ' - Riesgo Moderado';
-                                else if (nivel === 3) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 4) categoria = ' - Riesgo Crítico';
-                            } else if (metodo === 'RULA') {
-                                if (nivel <= 2) categoria = ' - Riesgo Bajo';
-                                else if (nivel <= 4) categoria = ' - Riesgo Medio';
-                                else if (nivel <= 6) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 7) categoria = ' - Riesgo Muy Alto';
-                            } else if (metodo === 'REBA') {
-                                if (nivel === 1) categoria = ' - Riesgo Bajo';
-                                else if (nivel <= 3) categoria = ' - Riesgo Medio';
-                                else if (nivel <= 7) categoria = ' - Riesgo Alto';
-                                else if (nivel >= 8) categoria = ' - Riesgo Muy Alto';
-                            }
-                            return `Tiempo: ${context.label}s - Nivel: ${nivel}${categoria}`;
-                        }
-                    }
-                },
-                legend: { position: 'top' }
             }
         }
     });
@@ -718,7 +636,6 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     const observaciones = resultado.observaciones_srt || '';
     const descripcionTarea = resultado.descripcion_tarea || 'Tarea principal';
     
-    // Evaluaciones para Planilla 2
     let evaluacionPeso = "BAJO";
     let riesgoPesoTolerable = "Tolerable";
     let colorPeso = "#28a745";
@@ -731,7 +648,6 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     if (frecuencia > 12) { evaluacionFrecuencia = "ALTO"; riesgoFrecuenciaTolerable = "NO TOLERABLE"; colorFrecuencia = "#dc3545"; }
     else if (frecuencia > 5) { evaluacionFrecuencia = "MODERADO"; riesgoFrecuenciaTolerable = "Requiere evaluación"; colorFrecuencia = "#ffc107"; }
     
-    // Escala de Borg para movimientos repetitivos
     let escalaBorg = 0;
     let riesgoBorgTolerable = "Tolerable";
     let colorBorg = "#28a745";
@@ -759,30 +675,15 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     let hayRiesgoNoTolerable = (riesgoPesoTolerable === "NO TOLERABLE" || riesgoBorgTolerable === "NO TOLERABLE" || riesgoPosturasTolerable === "NO TOLERABLE" || riesgoConfortTolerable === "NO TOLERABLE" || riesgoEstresTolerable === "NO TOLERABLE");
     
     const fechaFormateada = new Date().toLocaleDateString('es-AR');
-    
     let html = '';
     
     html += '<div class="planilla-section">';
     html += '<h3 style="color: var(--primary-dark); margin-top: 0;">📋 ANEXO I - PROTOCOLO DE ERGONOMÍA</h3>';
     html += '<p style="margin-bottom: 1rem; color: #555;">Resolución SRT 886/2015 - Superintendencia de Riesgos del Trabajo</p>';
     
-    // ============================================================
-    // PLANILLA 1: IDENTIFICACIÓN DE FACTORES DE RIESGO
-    // ============================================================
     html += '<h4 class="planilla-title">Planilla N° 1: Identificación de Factores de Riesgo</h4>';
     html += '<table class="modern-table">';
-    html += '<thead>';
-    html += '<tr>';
-    html += '<th>Factor de Riesgo</th>';
-    html += '<th>Tareas habituales</th>';
-    html += '<th>Tiempo de la jornada</th>';
-    html += '<th>Tarea 1</th>';
-    html += '<th>Tarea 2</th>';
-    html += '<th>Tarea 3</th>';
-    html += '<th>Tiempo total exposición</th>';
-    html += '<th>Nivel de Riesgo</th>';
-    html += '</tr>';
-    html += '</thead>';
+    html += '<thead><tr><th>Factor de Riesgo</th><th>Tareas habituales</th><th>Tiempo de la jornada</th><th>Tarea 1</th><th>Tarea 2</th><th>Tarea 3</th><th>Tiempo total exposición</th><th>Nivel de Riesgo</th></tr></thead>';
     html += '<tbody>';
     
     const factores = [
@@ -810,21 +711,14 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         html += '</tr>';
     });
     
-    html += '</tbody>';
-    html += '</table>';
-    
-    // ============================================================
-    // PLANILLA 2: EVALUACIÓN INICIAL (PASO 1 y PASO 2)
-    // ============================================================
+    html += '</tbody></table>';
     html += '<h4 class="planilla-title">Planilla N° 2: Evaluación Inicial</h4>';
     
-    // Función auxiliar para generar planillas 2.X
     function generarPlanilla2(titulo, preguntas, respuestas) {
         let h = '<h5 style="margin-top: 1rem; margin-bottom: 0.5rem;">' + titulo + '</h5>';
         h += '<table class="modern-table">';
         h += '<thead><tr><th>N°</th><th>Descripción</th><th style="text-align:center">SÍ</th><th style="text-align:center">NO</th></tr></thead>';
         h += '<tbody>';
-        
         for (let i = 0; i < preguntas.length; i++) {
             let esSi = respuestas[i] === true;
             let esNo = respuestas[i] === false;
@@ -835,12 +729,10 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
             h += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">' + (esNo ? 'X' : '') + '</td>';
             h += '</tr>';
         }
-        
         h += '</tbody></table>';
         return h;
     }
     
-    // 2.A - Levantamiento manual de cargas
     if (metodo === 'OWAS') {
         html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
             'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
@@ -848,7 +740,7 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
             'Distancia vertical > 75 cm',
             'Desplazamiento horizontal > 50 cm',
             'Postura forzada durante el levantamiento'
-        ], [peso > 25, frecuencia > 12, distancia > 75, false, (nivelRiesgo.includes('ALTO'))]);
+        ], [peso > 25, frecuencia > 12, distance > 75, false, (nivelRiesgo.includes('ALTO'))]);
     } else {
         html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
             'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
@@ -857,14 +749,12 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         ], [false, false, false]);
     }
     
-    // 2.D - Bipedestación
     html += generarPlanilla2('2.D - Bipedestación', [
         'Bipedestación durante más de 2 horas continuas sin pausas',
         'Superficie de trabajo dura sin tapiz antifatiga',
         'Imposibilidad de alternar con posición sentada'
     ], [bipedestacion === 'Fija', bipedestacion === 'Fija', bipedestacion === 'Fija']);
     
-    // 2.E - Movimientos repetitivos con Escala de Borg
     if (metodo === 'RULA' || metodo === 'REBA') {
         html += generarPlanilla2('2.E - Movimientos repetitivos (Escala de Borg CR-10)', [
             'Ciclo de trabajo < 30 segundos',
@@ -880,7 +770,6 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         ], [false, false]);
     }
     
-    // 2.F - Posturas forzadas
     html += generarPlanilla2('2.F - Posturas forzadas', [
         'Flexión de tronco > 20°',
         'Flexión de cuello > 20°',
@@ -893,7 +782,6 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         true
     ]);
     
-    // 2.H - Confort térmico
     html += generarPlanilla2('2.H - Confort térmico (Gráfico de Fanger)', [
         'Temperatura fuera del rango 20-24°C',
         'Humedad relativa fuera del rango 40-65%',
@@ -901,22 +789,17 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     ], [confort !== 'Adecuado', confort !== 'Adecuado', false]);
     html += '<p class="text-muted small">Zona de confort según gráfico de Fanger: Temperatura 20-24°C, Humedad relativa 40-65%.</p>';
     
-    // 2.I - Estrés de contacto
     html += generarPlanilla2('2.I - Estrés de contacto', [
         'Puntos de apoyo con bordes cortantes o duros',
         'Herramientas sin superficies ergonómicas',
         'Presión mantenida sobre tejidos blandos'
     ], [estresContacto !== 'No', estresContacto !== 'No', estresContacto !== 'No']);
     
-    // Resumen de tolerabilidad
     html += '<div class="risk-banner" style="margin-top: 1rem; background: ' + (hayRiesgoNoTolerable ? '#dc3545' : '#28a745') + '; color: white; padding: 15px; text-align: center; border-radius: 8px;">';
     html += '<h4>CONCLUSIÓN DE LA EVALUACIÓN INICIAL</h4>';
     html += '<p>' + (hayRiesgoNoTolerable ? '⚠️ Se han identificado RIESGOS NO TOLERABLES. Debe procederse a una evaluación específica y completar las Planillas 3 y 4.' : '✅ Todos los riesgos identificados son TOLERABLES. No se requiere acción inmediata.') + '</p>';
     html += '</div>';
     
-    // ============================================================
-    // PLANILLA 3: MEDIDAS CORRECTIVAS Y PREVENTIVAS
-    // ============================================================
     html += '<h4 class="planilla-title">Planilla N° 3: Medidas Correctivas y Preventivas</h4>';
     html += '<table class="modern-table">';
     html += '<thead><tr><th>N°</th><th>Medidas Preventivas / Correctivas</th><th style="text-align:center">SÍ / NO</th><th>Observaciones</th></tr></thead>';
@@ -951,7 +834,7 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     }
     
     if (medidas.length === 0) {
-        html += '<tr><td colspan="4" style="text-align:center; padding: 8px; border: 1px solid #ddd;">No se requieren medidas preventivas/correctivas específicas</div></div></td></div></div></td></div></div></td></div></div></tr>';
+        html += '<tr><td colspan="4" style="text-align:center; padding: 8px; border: 1px solid #ddd;">No se requieren medidas preventivas/correctivas específicas</td></tr>';
     } else {
         medidas.forEach(med => {
             html += '<tr>';
@@ -963,24 +846,11 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         });
     }
     
-    html += '</tbody></tr>';
+    html += '</tbody></table>';
     
-    // ============================================================
-    // PLANILLA 4: MATRIZ DE SEGUIMIENTO
-    // ============================================================
     html += '<h4 class="planilla-title">Planilla N° 4: Matriz de Seguimiento</h4>';
     html += '<table class="modern-table">';
-    html += '<thead>';
-    html += '<tr>';
-    html += '<th>N° M.C.P</th>';
-    html += '<th>Nombre del Puesto</th>';
-    html += '<th>Fecha de Evaluación</th>';
-    html += '<th>Nivel de Riesgo</th>';
-    html += '<th>Fecha de Medida Administrativa</th>';
-    html += '<th>Fecha de Medida de Ingeniería</th>';
-    html += '<th>Fecha de Cierre</th>';
-    html += '</tr>';
-    html += '</thead>';
+    html += '<thead><tr><th>N° M.C.P</th><th>Nombre del Puesto</th><th>Fecha de Evaluación</th><th>Nivel de Riesgo</th><th>Fecha de Medida Administrativa</th><th>Fecha de Medida de Ingeniería</th><th>Fecha de Cierre</th></tr></thead>';
     html += '<tbody>';
     
     for (let i = 1; i <= Math.max(medidas.length, 3); i++) {
@@ -997,102 +867,13 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
         html += '<td style="text-align:center; padding: 8px; border: 1px solid #ddd;">-</td>';
         html += '</tr>';
     }
-    
     html += '</tbody></table>';
     
-    // Observaciones
     if (observaciones) {
-        html += '<div class="dictamen-box" style="margin-top: 1rem;">';
-        html += '<h5>Observaciones adicionales</h5>';
-        html += '<p>' + observaciones + '</p>';
-        html += '</div>';
+        html += '<div class="dictamen-box" style="margin-top: 1rem;"><h5>Observaciones adicionales</h5><p>' + observaciones + '</p></div>';
     }
     
-    // Marco Normativo
-    html += '<div class="dictamen-box" style="margin-top: 1rem;">';
-    html += '<h5>Marco Normativo Aplicable</h5>';
-    html += '<ul>';
-    html += '<li>Ley 19.587/72 - Higiene y Seguridad en el Trabajo</li>';
-    html += '<li>Decreto 351/79 - Reglamentario de la Ley 19.587</li>';
-    html += '<li>Resolución SRT 295/2003 - Programa de Ergonomía Integrado</li>';
-    function actualizarGrafico(evolucionTemporal, metodo) {
-    const canvas = document.getElementById('riskChart');
-    if (!canvas) return;
-    
-    if (riskChartInstance) {
-        riskChartInstance.destroy();
-        riskChartInstance = null;
-    }
-    
-    let tiempoData = [];
-    let riesgoData = [];
-    let coloresFondo = [];
-    
-    let datos = evolucionTemporal;
-    if (typeof datos === 'string') {
-        try { datos = JSON.parse(datos); } catch(e) { console.error(e); }
-    }
-    
-    if (datos && Array.isArray(datos) && datos.length > 0) {
-        // Si hay más de 150 puntos, calculamos un salto proporcional para que entren bien
-        let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
-        
-        for (let i = 0; i < datos.length; i += paso) {
-            let pt = datos[i];
-            if (pt && pt.length >= 2) {
-                let t = parseFloat(pt[0]).toFixed(1);
-                let r = parseInt(pt[1]);
-                if (!isNaN(t) && !isNaN(r)) {
-                    tiempoData.push(t);
-                    riesgoData.push(r);
-                    coloresFondo.push(typeof getColorByNivel === 'function' ? getColorByNivel(r, metodo) : '#ef4444');
-                }
-            }
-        }
-    }
-    
-    if (tiempoData.length === 0) {
-        tiempoData = ['0.0', '2.0', '4.0', '6.0'];
-        riesgoData = [1, 2, 2, 1];
-        coloresFondo = ['#10b981', '#f59e0b', '#f59e0b', '#10b981'];
-    }
-    
-    const ctx = canvas.getContext('2d');
-    riskChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: tiempoData,
-            datasets: [{
-                label: metodo === 'RULA' ? 'Puntuación RULA' : (metodo === 'REBA' ? 'Puntuación REBA' : 'Nivel de Riesgo OWAS'),
-                data: riesgoData,
-                backgroundColor: coloresFondo,
-                borderWidth: 1,
-                borderRadius: 4,
-                barPercentage: 0.6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    min: 1,
-                    max: metodo === 'RULA' ? 7 : (metodo === 'REBA' ? 15 : 4),
-                    ticks: { stepSize: 1 }
-                },
-                x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
-            }
-        }
-    });
-}
-    html += '<li>Norma ISO 11226 - Evaluación de posturas de trabajo</li>';
-    html += '<li>Norma ISO 11228 - Manipulación manual de cargas</li>';
-    html += '</ul>';
-    html += '<hr>';
-    html += '<p class="small text-muted">Fecha de evaluación: ' + fechaFormateada + '</p>';
-    html += '<p class="small text-muted">Documento generado por ERGOEDGE OS - Cumplimiento Res. SRT 886/2015</p>';
-    html += '</div>';
-    
+    html += '<div class="dictamen-box" style="margin-top: 1rem;"><h5>Marco Normativo Aplicable</h5><ul><li>Ley 19.587/72 - Higiene y Seguridad en el Trabajo</li><li>Decreto 351/79 - Reglamentario de la Ley 19.587</li><li>Resolución SRT 295/2003 - Programa de Ergonomía Integrado</li><li>Norma ISO 11226 - Evaluación de posturas de trabajo</li><li>Norma ISO 11228 - Manipulación manual de cargas</li></ul><hr><p class="small text-muted">Fecha de evaluación: ' + fechaFormateada + '</p><p class="small text-muted">Documento generado por ERGOEDGE OS - Cumplimiento Res. SRT 886/2015</p></div>';
     html += '</div>';
     
     return html;
@@ -1116,12 +897,9 @@ function cargarYRenderizar(id, autoPrint = false) {
             }
             
             const resultado = item.resultado || {};
-            const metodo = item.metodo || 'OWAS'; // <-- Primero declaramos el método
+            const metodo = item.metodo || 'OWAS';
 
-            // Después extraemos la serie de tiempo
             let evolucionTemporal = item.evolucion_temporal || resultado.evolucion_temporal || [];
-
-            // Y al final de todo, con las dos variables listas, llamamos al gráfico
             actualizarGrafico(evolucionTemporal, metodo);
             
             document.getElementById('operarioNombre').innerHTML = (item.operario_nombre || 'N/A') + ' (' + (item.operario_edad || 'N/A') + ' años)';
@@ -1212,9 +990,6 @@ function cargarYRenderizar(id, autoPrint = false) {
                 imagenesContainer.style.display = 'none';
             }
             
-            const evolucionTemporal = resultado.evolucion_temporal || [];
-            actualizarGrafico(evolucionTemporal, metodo);
-            
             if (autoPrint) {
                 setTimeout(() => window.print(), 500);
             }
@@ -1284,9 +1059,6 @@ function limpiarLogo() {
     logoContainer.style.display = 'flex';
     removeLogoBtn.style.display = 'none';
     logoInput.value = '';
-    if (typeof showToast === 'function') {
-        showToast('Logo eliminado. Puede subir uno nuevo para este informe.', 'info', 3000);
-    }
 }
 
 removeLogoBtn.addEventListener('click', limpiarLogo);
