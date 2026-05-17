@@ -207,7 +207,7 @@
     .risk-banner h2 { font-size: 2rem; font-weight: 800; margin: 0; }
     .risk-banner p { margin: 0.5rem 0 0; opacity: 0.9; }
     
-    /* CONGELAMOS EL TAMAÑO AQUÍ PARA DETENER EL BUCLE INFINITO DE CHART.JS */
+    /* CAJA BLINDADA CONTRA EL BUCLE INFINITO DE RE-RENDER */
     .chart-container {
         background: white;
         border-radius: 16px;
@@ -546,7 +546,6 @@ function actualizarGrafico(evolucionTemporal, metodo) {
     
     let maxY = 4;
     let yTitle = 'Nivel de Riesgo OWAS (1-4)';
-    let stepSize = 1;
     
     if (metodo === 'RULA') {
         maxY = 7;
@@ -566,7 +565,6 @@ function actualizarGrafico(evolucionTemporal, metodo) {
     }
     
     if (datos && Array.isArray(datos) && datos.length > 0) {
-        // FILTRO DE DENSIDAD DINÁMICO
         let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
         
         for (let i = 0; i < datos.length; i += paso) {
@@ -604,7 +602,7 @@ function actualizarGrafico(evolucionTemporal, metodo) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false, // CAMBIADO A FALSE PARA QUE SE CO ACOMODE AL CONTENEDOR CSS FISS
+            maintainAspectRatio: false, // CLAVE PARA RESPONDER AL TAMAÑO CSS FIJO
             scales: {
                 y: {
                     min: 1,
@@ -646,7 +644,7 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     
     const peso = parseFloat(resultado.peso_carga) || 10;
     const frecuencia = parseInt(resultado.frecuencia_levantamiento) || 20;
-    const distancia = parseInt(resultado.distancia_vertical) || 50; // CORREGIDA VARIABLE ABAJO
+    const distancia = parseInt(resultado.distancia_vertical) || 50; 
     const bipedestacion = resultado.tipo_bipedestacion || 'Fija';
     const confort = resultado.confort_termico || 'Adecuado';
     const estresContacto = resultado.estres_contacto || 'No';
@@ -756,11 +754,11 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     if (metodo === 'OWAS') {
         html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
             'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
-            'Frecuencia > 12 levantamientos por hour',
+            'Frecuencia > 12 levantamientos por hora',
             'Distancia vertical > 75 cm',
             'Desplazamiento horizontal > 50 cm',
             'Postura forzada durante el levantamiento'
-        ], [peso > 25, frecuencia > 12, distancia > 75, false, (nivelRiesgo.includes('ALTO'))]); // CORREGIDA VARIABLE ACÁ
+        ], [peso > 25, frecuencia > 12, distancia > 75, false, (nivelRiesgo.includes('ALTO'))]); 
     } else {
         html += generarPlanilla2('2.A - Levantamiento manual de cargas', [
             'Peso de la carga > 25 kg (o > 16 kg si es mujer)',
@@ -829,7 +827,7 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     let medidaIdx = 1;
     
     if (metodo === 'OWAS' && peso > 10) {
-        medidas.push({ desc: 'Capacitación en técnicas seguras de levantamiento de cargas', implementada: false, obs: 'Pendiente programar' });
+        cmd.push({ desc: 'Capacitación en técnicas seguras de levantamiento de cargas', implementada: false, obs: 'Pendiente programar' });
         medidas.push({ desc: 'Reducción del peso de la carga o instalación de ayudas mecánicas', implementada: false, obs: 'Evaluar viabilidad técnica' });
     }
     if (bipedestacion === 'Fija') {
@@ -921,7 +919,6 @@ function cargarYRenderizar(id, autoPrint = false) {
             const resultado = item.resultado || {};
             const metodo = item.metodo || 'OWAS';
             
-            // CORREGIDO: BUSCAMOS LA TELEMETRÍA REAL EN ITEM PRIMERO
             let evolucionTemporal = item.evolucion_temporal || resultado.evolucion_temporal || [];
             
             if (evolucionTemporal.length === 0 && resultado.puntuacion) {
@@ -930,20 +927,29 @@ function cargarYRenderizar(id, autoPrint = false) {
             
             actualizarGrafico(evolucionTemporal, metodo);
             
+            // RED DE SEGURIDAD ABSOLUTA PARA EXTRAER VARIABLES DEL OPERARIO
+            const opNombre = item.operario_nombre || resultado.operario_nombre || item.nombre || resultado.nombre || 'N/A';
+            const opEdad = item.operario_edad || resultado.operario_edad || item.edad || resultado.edad || 'N/A';
+            const opPuesto = item.puesto || resultado.puesto || 'N/A';
+            const opAntiguedad = item.operario_antiguedad || resultado.operario_antiguedad || item.antiguedad || resultado.antiguedad || 'N/A';
+            const opPatologias = item.operario_patologias || resultado.operario_patologias || item.patologias || resultado.patologias || 'Ninguna';
+            const opEvaluador = item.evaluador || resultado.evaluador || 'N/A';
+
+            // ASIGNACIONES SEGURAS EN EL DOM
             const operarioElement = document.getElementById('operarioNombre');
-            if (operarioElement) operarioElement.innerHTML = (item.operario_nombre || 'N/A') + ' (' + (item.operario_edad || 'N/A') + ' años)';
+            if (operarioElement) operarioElement.innerHTML = opNombre + ' (' + opEdad + ' años)';
             
             const puestoElement = document.getElementById('puestoValor');
-            if (puestoElement) puestoElement.innerHTML = item.puesto || 'N/A';
+            if (puestoElement) puestoElement.innerHTML = opPuesto;
             
             const antiguedadElement = document.getElementById('antiguedadValor');
-            if (antiguedadElement) antiguedadElement.innerHTML = item.operario_antiguedad || 'N/A';
+            if (antiguedadElement) antiguedadElement.innerHTML = opAntiguedad;
             
             const patologiasElement = document.getElementById('patologiasValor');
-            if (patologiasElement) patologiasElement.innerHTML = item.operario_patologias || 'Ninguna';
+            if (patologiasElement) patologiasElement.innerHTML = opPatologias;
             
             const evaluadorElement = document.getElementById('evaluadorValor');
-            if (evaluadorElement) evaluadorElement.innerHTML = item.evaluador || 'N/A';
+            if (evaluadorElement) evaluadorElement.innerHTML = opEvaluador;
             
             const metodoElement = document.getElementById('metodoValue');
             if (metodoElement) metodoElement.innerHTML = metodo;
