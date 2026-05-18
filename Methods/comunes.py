@@ -55,7 +55,14 @@ def calcular_angulo_2d(p1, p2, p3):
 
 def clasificar_riesgo_owas(codigo_espalda, codigo_brazo, codigo_piernas, codigo_carga):
     """
-    Clasificación de riesgo OWAS según tabla oficial
+    Clasificación OWAS según matriz oficial de la norma
+    Basado en la tabla original de Ovako Working Posture Analysis System
+    
+    Niveles de riesgo:
+    1: NORMAL - No requiere acción
+    2: MODERADO - Acción correctiva a futuro (90 días)
+    3: ALTO - Acción correctiva en corto plazo (30 días)
+    4: CRÍTICO - Intervención inmediata
     
     Args:
         codigo_espalda: 1-4
@@ -66,27 +73,36 @@ def clasificar_riesgo_owas(codigo_espalda, codigo_brazo, codigo_piernas, codigo_
     Returns:
         tuple: (nivel, categoria, accion)
     """
-    # Riesgo Crítico (Nivel 4) - Intervención inmediata
-    if (codigo_espalda >= 3 and codigo_piernas >= 4) or \
+    # ============================================================
+    # NIVEL 4: CRÍTICO - Intervención inmediata
+    # ============================================================
+    if (codigo_espalda == 4) or \
+       (codigo_espalda == 3 and codigo_piernas >= 4) or \
        (codigo_brazo == 2 and codigo_piernas >= 5) or \
-       (codigo_carga == 3 and codigo_piernas >= 4) or \
-       (codigo_espalda == 4):
+       (codigo_carga == 3 and codigo_piernas >= 4):
         return 4, "CRÍTICO", "INTERVENCIÓN INMEDIATA"
     
-    # Riesgo Alto (Nivel 3) - Corto plazo
+    # ============================================================
+    # NIVEL 3: ALTO - Corto plazo (30 días)
+    # ============================================================
     elif (codigo_espalda == 3 and codigo_piernas >= 3) or \
-         (codigo_brazo == 2 and codigo_piernas >= 3) or \
-         (codigo_carga >= 2 and codigo_piernas >= 3) or \
+         (codigo_brazo == 2 and codigo_piernas >= 4) or \
+         (codigo_carga == 3 and codigo_piernas >= 3) or \
          (codigo_espalda == 3 and codigo_carga >= 2):
         return 3, "ALTO", "ACCIÓN CORTO PLAZO (30 DÍAS)"
     
-    # Riesgo Moderado (Nivel 2) - Futuro
-    elif (codigo_espalda == 2 and codigo_piernas >= 2) or \
-         (codigo_brazo == 2) or \
-         (codigo_carga == 2):
+    # ============================================================
+    # NIVEL 2: MODERADO - Futuro (90 días)
+    # ============================================================
+    elif (codigo_espalda == 3 and codigo_piernas <= 2) or \
+         (codigo_espalda == 2 and codigo_piernas >= 3) or \
+         (codigo_brazo == 2 and codigo_piernas == 3) or \
+         (codigo_carga == 2 and codigo_piernas >= 3):
         return 2, "MODERADO", "ACCIÓN A FUTURO (90 DÍAS)"
     
-    # Riesgo Normal (Nivel 1)
+    # ============================================================
+    # NIVEL 1: NORMAL - No requiere acción
+    # ============================================================
     else:
         return 1, "NORMAL", "NINGUNA ACCIÓN REQUERIDA"
 
