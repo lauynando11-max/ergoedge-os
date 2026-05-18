@@ -383,6 +383,39 @@ if modelo_yolo is None:
 
 # ==================== FUNCIONES DE PROCESAMIENTO ====================
 
+def detectar_postura_piernas_yolo(angulo_rodilla, cadera, rodilla, tobillo):
+    """
+    Detecta postura de piernas según OWAS oficial
+    
+    Códigos OWAS:
+    1: Sentado
+    2: De pie (piernas rectas)
+    3: De pie con apoyo unilateral
+    4: Agachado / rodillas flexionadas
+    5: De pie con una pierna flexionada
+    6: Arrodillado
+    7: Caminando
+    """
+    if cadera is None or rodilla is None:
+        return 2, "De pie", "Piernas rectas", 1
+    
+    # Sentado (cadera más baja que rodilla)
+    if cadera[1] > rodilla[1] + 50:
+        return 1, "Sentado", "Sentado", 1
+    
+    # Arrodillado
+    if tobillo is not None and abs(rodilla[1] - tobillo[1]) < 40:
+        return 6, "Arrodillado", "Arrodillado", 1
+    
+    # Agachado / rodillas flexionadas (umbral reducido a 35°)
+    if angulo_rodilla > 35:
+        return 4, "Agachado", f"Rodillas flexionadas ({angulo_rodilla:.0f}°)", 3
+    elif angulo_rodilla > 20:
+        return 3, "De pie", f"Piernas semiflexionadas ({angulo_rodilla:.0f}°)", 2
+    else:
+        return 2, "De pie", f"Piernas rectas ({angulo_rodilla:.0f}°)", 1
+
+
 def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_anterior=None, frame_num=0):
     from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
     
@@ -441,7 +474,7 @@ def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_an
     
     codigo_brazo = 2 if brazo_sobre_hombro else 1
     
-    # ========== PIERNAS (Código 1-7 OWAS oficial) ==========
+    # ========== PIERNAS ==========
     sentado = False
     if cadera and rodilla_izq:
         if cadera[1] > rodilla_izq[1] + 50:
@@ -462,16 +495,17 @@ def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_an
         angulo_rodilla_izq = calcular_angulo_2d(cadera, rodilla_izq, tobillo_izq)
         if angulo_rodilla_izq < 150:
             pierna_izq_flexionada = True
-        # DEBUG: Mostrar ángulo de rodilla izquierda
-        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla IZQ: {angulo_rodilla_izq:.1f}° | Flexionada: {pierna_izq_flexionada}")
+        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla IZQ: {angulo_rodilla_izq:.1f}°")
     
     if cadera and rodilla_der and tobillo_der:
         angulo_rodilla_der = calcular_angulo_2d(cadera, rodilla_der, tobillo_der)
         if angulo_rodilla_der < 150:
             pierna_der_flexionada = True
-        # DEBUG: Mostrar ángulo de rodilla derecha
-        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla DER: {angulo_rodilla_der:.1f}° | Flexionada: {pierna_der_flexionada}")
-
+        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla DER: {angulo_rodilla_der:.1f}°")
+    
+    # Usar el ángulo promedio de rodillas
+    angulo_rodilla_prom = (angulo_rodilla_izq + angulo_rodilla_der) / 2 if (cadera and rodilla_izq and tobillo_izq) else angulo_rodilla_der
+    
     caminando = False
     if keypoints_anterior is not None:
         cadera_ant = obtener_punto(keypoints_anterior, 11)
@@ -482,16 +516,26 @@ def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_an
     
     if sentado:
         codigo_piernas = 1
+        estado_piernas = "Sentado"
     elif arrodillado:
         codigo_piernas = 6
+        estado_piernas = "Arrodillado"
     elif caminando:
         codigo_piernas = 7
+        estado_piernas = "Caminando"
     elif pierna_izq_flexionada and pierna_der_flexionada:
         codigo_piernas = 4
+        estado_piernas = "Agachado"
     elif pierna_izq_flexionada or pierna_der_flexionada:
         codigo_piernas = 5
+        estado_piernas = "Apoyo unilateral"
     else:
-        codigo_piernas = 2
+        # Usar la función mejorada para detectar piernas por ángulo
+        codigo_piernas, estado_piernas, desc_piernas, _ = detectar_postura_piernas_yolo(
+            angulo_rodilla_prom, cadera, rodilla_izq, tobillo_izq
+        )
+    
+    print(f"🦵 [DEBUG] Frame {frame_num} - Piernas: {estado_piernas} (código {codigo_piernas}) | Ángulo promedio: {angulo_rodilla_prom:.1f}°")
     
     # ========== CARGA DINÁMICA ==========
     carga_data = detectar_carga_dinamica(keypoints, keypoints_anterior, codigo_carga_constante)
@@ -574,7 +618,7 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
             if not ret:
                 break
             
-            if frame_count % 15 == 0:  # Optimizado: procesa 1 de cada 15 frames
+            if frame_count % 15 == 0:
                 results = modelo_yolo(frame, verbose=False)
                 if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
                     keypoints = results[0].keypoints.data[0].cpu().numpy()
