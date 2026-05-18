@@ -38,12 +38,14 @@ import time
 # ==== Variables de entorno ====
 from dotenv import load_dotenv
 load_dotenv()
+
 # ==== CONFIGURACIÓN DE EXTENSIONES PERMITIDAS ====
 ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # ==== IMPORTAR BASE DE DATOS SQLITE ====
 from database import (
     init_db, crear_usuario, obtener_usuario_por_token,
@@ -346,14 +348,12 @@ def logout():
 
 # Configurar carpeta de uploads
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
-ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'jpg', 'jpeg', 'png'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB límite
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ==================== CARGA DEL MODELO YOLO (FUNCIONA SEGURO) ====================
 print("📥 Cargando modelo YOLO11 Pose...")
-import torch
 from ultralytics import YOLO
 
 # --- INICIO DE LA SOLUCIÓN DEFINITIVA ---
@@ -383,7 +383,7 @@ if modelo_yolo is None:
 
 # ==================== FUNCIONES DE PROCESAMIENTO ====================
 
-def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_anterior=None):
+def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_anterior=None, frame_num=0):
     from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
     
     hombro = obtener_punto(keypoints, 5)
@@ -462,12 +462,16 @@ def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_an
         angulo_rodilla_izq = calcular_angulo_2d(cadera, rodilla_izq, tobillo_izq)
         if angulo_rodilla_izq < 150:
             pierna_izq_flexionada = True
+        # DEBUG: Mostrar ángulo de rodilla izquierda
+        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla IZQ: {angulo_rodilla_izq:.1f}° | Flexionada: {pierna_izq_flexionada}")
     
     if cadera and rodilla_der and tobillo_der:
         angulo_rodilla_der = calcular_angulo_2d(cadera, rodilla_der, tobillo_der)
         if angulo_rodilla_der < 150:
             pierna_der_flexionada = True
-    
+        # DEBUG: Mostrar ángulo de rodilla derecha
+        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla DER: {angulo_rodilla_der:.1f}° | Flexionada: {pierna_der_flexionada}")
+
     caminando = False
     if keypoints_anterior is not None:
         cadera_ant = obtener_punto(keypoints_anterior, 11)
@@ -575,7 +579,7 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
                 if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
                     keypoints = results[0].keypoints.data[0].cpu().numpy()
                     
-                    resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante, keypoints_anterior)
+                    resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante, keypoints_anterior, frame_count)
                     resultados.append(resultado)
                     
                     tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
@@ -664,7 +668,7 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
         results = modelo_yolo(frame, verbose=False)
         if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
             keypoints = results[0].keypoints.data[0].cpu().numpy()
-            resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante)
+            resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante, None, 0)
             
             recomendaciones = []
             if resultado['nivel_riesgo'] >= 3:
@@ -739,7 +743,7 @@ def procesar_rula(filepath, es_video, datos_operario_ia=None):
             if not ret:
                 break
             
-            if frame_count % 15 == 0:  # Optimizado: procesa 1 de cada 15 frames
+            if frame_count % 15 == 0:
                 results = modelo_yolo(frame, verbose=False)
                 if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
                     keypoints = results[0].keypoints.data[0].cpu().numpy()
@@ -901,7 +905,7 @@ def procesar_reba(filepath, es_video, datos_operario_ia=None):
             if not ret:
                 break
             
-            if frame_count % 15 == 0:  # Optimizado: procesa 1 de cada 15 frames
+            if frame_count % 15 == 0:
                 results = modelo_yolo(frame, verbose=False)
                 if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
                     keypoints = results[0].keypoints.data[0].cpu().numpy()
