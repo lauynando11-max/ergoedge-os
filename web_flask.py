@@ -62,6 +62,9 @@ from main import generar_dictamen_gemini_unificado
 # Importar generadores de PDF
 from Methods.reports import generar_reporte_rosa, generar_reporte_reba, generar_reporte_generico
 
+# ==================== IMPORTAR DETECTOR FUSIONADO ====================
+from Methods.fusion_detector import FusionPoseDetector
+
 # ==================== DICTAMEN PROFESIONAL DE RESPALDO ====================
 def generar_dictamen_profesional(metodo, resultados, datos_operario):
     """Genera dictamen profesional basado en especialistas (sin Gemini)"""
@@ -77,51 +80,54 @@ def generar_dictamen_profesional(metodo, resultados, datos_operario):
         codigo = resultados.get('codigo_owas', 'N/A')
         peso_carga = resultados.get('peso_carga', 0)
         
-        if nivel >= 4 or patologia_riesgo:
-            return f"""DICTAMEN ERGONÓMICO - RIESGO CRÍTICO
+        # Interpretación según nivel real
+        if nivel == 1:
+            return f"""DICTAMEN ERGONÓMICO - RIESGO BAJO
 
-El operario {nombre} ({edad} años, {antiguedad} años de antigüedad) presenta exposición MUY DAÑINA según evaluación OWAS (Código {codigo}). {'⚠️ ATENCIÓN: Patologías preexistentes agravan el riesgo.' if patologia_riesgo else ''}
+El operario {nombre} ({edad} años, {antiguedad} años de antigüedad) presenta una evaluación OWAS con código {codigo}, lo que corresponde a un NIVEL DE RIESGO BAJO.
 
-🔴 RECOMENDACIONES URGENTES (Ingeniería):
-• Rediseñar el puesto con mesas de altura regulable (rango 70-110 cm)
-• Instalar ayudas mecánicas obligatorias (balancines, polipastos)
-• Rotar tareas cada 30 minutos
-• Evaluación médica en un plazo NO MAYOR a 7 días
+📊 ANÁLISIS:
+• Código OWAS: {codigo}
+• Las posturas evaluadas se encuentran dentro de parámetros normales
+• No se requiere intervención inmediata
 
-📋 MEDIDAS ORGANIZACIONALES:
-• Capacitación en técnicas de levantamiento seguro
-• Recordatorios de cambio postural cada 15 minutos
-• Pausas activas obligatorias cada 30 minutos"""
+✅ RECOMENDACIONES:
+• Mantener las buenas prácticas ergonómicas actuales
+• Continuar con pausas activas programadas
+• Realizar monitoreo periódico anual
+
+📌 El puesto de trabajo no presenta factores de riesgo significativos según OWAS."""
         
-        elif nivel >= 3:
+        elif nivel == 2:
+            return f"""DICTAMEN ERGONÓMICO - RIESGO MODERADO
+
+El trabajador {nombre} requiere monitoreo periódico (código OWAS {codigo}).
+
+Recomendaciones:
+• Ajustar alturas de trabajo
+• Implementar rotación de tareas
+• Monitoreo trimestral"""
+        
+        elif nivel == 3:
             return f"""DICTAMEN ERGONÓMICO - RIESGO ALTO
 
 El trabajador {nombre} requiere intervención en el corto plazo (30 días).
 
 Recomendaciones:
-• Ajustar altura del plano de trabajo (espalda <20° flexión)
-• Instalar apoyabrazos ergonómicos ajustables
-• Pausas activas cada 45 minutos
-• Seguimiento médico semestral"""
-        
-        elif nivel >= 2:
-            return f"""DICTAMEN ERGONÓMICO - RIESGO MODERADO
-
-El puesto evaluado requiere ajustes programados (90 días).
-
-Recomendaciones:
-• Reorganizar elementos al alcance frontal
-• Capacitación en auto-corrección postural
-• Monitoreo ergonómico trimestral"""
+• Rediseñar el puesto
+• Instalar ayudas mecánicas
+• Pausas activas cada 45 minutos"""
         
         else:
-            return f"""DICTAMEN ERGONÓMICO - RIESGO BAJO
+            return f"""DICTAMEN ERGONÓMICO - RIESGO CRÍTICO
 
-Las condiciones posturales del operario {nombre} son aceptables.
+¡INTERVENCIÓN INMEDIATA REQUERIDA!
+El operario {nombre} presenta riesgo crítico según OWAS (código {codigo}).
 
-Recomendaciones preventivas:
-• Mantener pausas activas diarias
-• Auditorías ergonómicas anuales"""
+Recomendaciones URGENTES:
+• Suspender tarea hasta evaluación detallada
+• Rediseñar completamente el puesto
+• Evaluación médica inmediata"""
     
     elif metodo == 'RULA':
         punt = resultados.get('puntuacion', 1)
@@ -315,7 +321,6 @@ def api_analisis(id):
     
     analisis = obtener_analisis_por_id(id, token)
     if analisis:
-        # Devolver el resultado completo
         return jsonify(analisis.get('resultado', {}))
     
     return jsonify({"error": "No encontrado"}), 404
@@ -332,7 +337,6 @@ def api_ultimo_analisis():
     if not historial:
         return jsonify({"error": "No hay análisis"}), 404
     
-    # Obtener el análisis completo
     analisis = obtener_analisis_por_id(historial[0]['id'], token)
     if analisis:
         return jsonify(analisis.get('resultado', {}))
@@ -352,8 +356,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB límite
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ==================== CARGA DEL MODELO YOLO (FUNCIONA SEGURO) ====================
-print("📥 Cargando modelo YOLO11 Pose...")
+# ==================== CARGA DEL MODELO YOLO Y DETECTOR FUSIONADO ====================
+print("📥 Cargando modelos...")
 from ultralytics import YOLO
 
 # --- INICIO DE LA SOLUCIÓN DEFINITIVA ---
@@ -367,6 +371,8 @@ except Exception as e:
 # --- FIN DE LA SOLUCIÓN ---
 
 modelo_yolo = None
+detector_fusion = None
+
 try:
     modelo_yolo = YOLO('yolo11x-pose.pt')
     modelo_yolo.overrides['conf'] = 0.4
@@ -374,177 +380,77 @@ try:
     modelo_yolo.overrides['max_det'] = 1
     print("✅ Modelo YOLO11x-pose cargado correctamente")
 except Exception as e:
-    print(f"❌ Error fatal cargando el modelo: {e}")
+    print(f"❌ Error fatal cargando el modelo YOLO: {e}")
     modelo_yolo = None
 
-if modelo_yolo is None:
-    print("❌ NO HAY MODELO DISPONIBLE. El sistema no funcionará.")
+# Inicializar detector fusionado para OWAS/RULA/REBA
+try:
+    detector_fusion = FusionPoseDetector(yolo_model_path='yolo11n-pose.pt', min_confidence=0.4)
+    print("✅ Detector Fusionado inicializado correctamente")
+except Exception as e:
+    print(f"⚠️ Error inicializando detector fusionado: {e}")
+    detector_fusion = None
+
+if modelo_yolo is None and detector_fusion is None:
+    print("❌ NO HAY MODELOS DISPONIBLES. El sistema no funcionará.")
     exit(1)
 
-# ==================== FUNCIONES DE PROCESAMIENTO ====================
 
-def detectar_postura_piernas_yolo(angulo_rodilla, cadera, rodilla, tobillo):
-    """
-    Detecta postura de piernas según OWAS oficial
-    
-    Códigos OWAS:
-    1: Sentado
-    2: De pie (piernas rectas)
-    3: De pie con apoyo unilateral
-    4: Agachado / rodillas flexionadas
-    5: De pie con una pierna flexionada
-    6: Arrodillado
-    7: Caminando
-    """
-    if cadera is None or rodilla is None:
-        return 2, "De pie", "Piernas rectas", 1
-    
-    # Sentado (cadera más baja que rodilla)
-    if cadera[1] > rodilla[1] + 50:
-        return 1, "Sentado", "Sentado", 1
-    
-    # Arrodillado
-    if tobillo is not None and abs(rodilla[1] - tobillo[1]) < 40:
-        return 6, "Arrodillado", "Arrodillado", 1
-    
-    # Agachado / rodillas flexionadas (umbral reducido a 35°)
-    if angulo_rodilla > 35:
-        return 4, "Agachado", f"Rodillas flexionadas ({angulo_rodilla:.0f}°)", 3
-    elif angulo_rodilla > 20:
-        return 3, "De pie", f"Piernas semiflexionadas ({angulo_rodilla:.0f}°)", 2
-    else:
-        return 2, "De pie", f"Piernas rectas ({angulo_rodilla:.0f}°)", 1
+# ==================== FUNCIONES DE PROCESAMIENTO CON DETECTOR FUSIONADO ====================
 
-
-def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_anterior=None, frame_num=0):
-    from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
+def procesar_frame_owas_fusion(frame, codigo_carga_constante=1, keypoints_anterior=None, frame_num=0):
+    """Versión mejorada usando detector fusionado"""
     
-    hombro = obtener_punto(keypoints, 5)
-    cadera = obtener_punto(keypoints, 11)
-    rodilla_izq = obtener_punto(keypoints, 13)
-    rodilla_der = obtener_punto(keypoints, 14)
-    tobillo_izq = obtener_punto(keypoints, 15)
-    tobillo_der = obtener_punto(keypoints, 16)
-    hombro_der = obtener_punto(keypoints, 6)
+    if detector_fusion is None:
+        return None
     
-    # ========== ESPALDA (Código 1-4) ==========
-    if hombro and cadera and rodilla_izq:
-        angulo_espalda = calcular_angulo_2d(hombro, cadera, rodilla_izq)
-        if angulo_espalda > 90:
-            angulo_espalda = 180 - angulo_espalda
-    else:
-        angulo_espalda = 0
+    landmarks_dict = detector_fusion.get_landmarks_dict(frame)
     
-    # ========== TORSIÓN AVANZADA ==========
-    hombro_izq_punto = obtener_punto(keypoints, 5)
-    hombro_der_punto = obtener_punto(keypoints, 6)
-    cadera_izq_punto = obtener_punto(keypoints, 11)
-    cadera_der_punto = obtener_punto(keypoints, 12)
+    if landmarks_dict is None:
+        return None
     
-    torsion_data = calcular_torsion_avanzada(hombro_izq_punto, hombro_der_punto, cadera_izq_punto, cadera_der_punto)
-    torsion = 1 if torsion_data['detectada'] else 0
+    # Calcular datos OWAS desde landmarks
+    owas_data = detector_fusion.calculate_owas_data(landmarks_dict)
     
-    if angulo_espalda <= 20:
+    # Extraer valores
+    angulo_espalda = owas_data['espalda_angulo']
+    
+    # Código de espalda según tabla OWAS
+    if angulo_espalda < 20:
         codigo_espalda = 1
+        estado_espalda = "Recta"
     elif angulo_espalda <= 60:
         codigo_espalda = 2
+        estado_espalda = "Inclinada"
     elif angulo_espalda <= 90:
-        codigo_espalda = 3
+        codigo_espalda = 2
+        estado_espalda = "Muy inclinada"
     else:
         codigo_espalda = 4
+        estado_espalda = "Extrema"
     
-    # Aplicar torsión con incremento según severidad
-    if torsion_data['detectada']:
-        codigo_espalda = min(codigo_espalda + torsion_data['incremento'], 4)
-        print(f"   🔄 Torsión: {torsion_data['angulo']}° hacia {torsion_data['direccion']} (+{torsion_data['incremento']})")
+    # Código de brazos según elevación
+    elevado_izq = owas_data['brazo_izq'] < 90 if owas_data['brazo_izq'] <= 180 else False
+    elevado_der = owas_data['brazo_der'] < 90 if owas_data['brazo_der'] <= 180 else False
     
-    # ========== BRAZOS (Código 1-2) ==========
-    hombro_brazo = obtener_punto(keypoints, 5)
-    hombro_brazo_der = obtener_punto(keypoints, 6)
-    muneca = obtener_punto(keypoints, 9)
-    muneca_der = obtener_punto(keypoints, 10)
-    
-    brazo_sobre_hombro = 0
-    if muneca and hombro_brazo:
-        if muneca[1] < hombro_brazo[1] - 30:
-            brazo_sobre_hombro = 1
-    if muneca_der and hombro_brazo_der:
-        if muneca_der[1] < hombro_brazo_der[1] - 30:
-            brazo_sobre_hombro = 1
-    
-    codigo_brazo = 2 if brazo_sobre_hombro else 1
-    
-    # ========== PIERNAS ==========
-    sentado = False
-    if cadera and rodilla_izq:
-        if cadera[1] > rodilla_izq[1] + 50:
-            sentado = True
-    
-    arrodillado = False
-    if rodilla_izq and tobillo_izq:
-        distancia_rodilla_tobillo = abs(rodilla_izq[1] - tobillo_izq[1])
-        if distancia_rodilla_tobillo < 40:
-            arrodillado = True
-    
-    angulo_rodilla_izq = 180
-    angulo_rodilla_der = 180
-    pierna_izq_flexionada = False
-    pierna_der_flexionada = False
-    
-    if cadera and rodilla_izq and tobillo_izq:
-        angulo_rodilla_izq = calcular_angulo_2d(cadera, rodilla_izq, tobillo_izq)
-        if angulo_rodilla_izq < 150:
-            pierna_izq_flexionada = True
-        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla IZQ: {angulo_rodilla_izq:.1f}°")
-    
-    if cadera and rodilla_der and tobillo_der:
-        angulo_rodilla_der = calcular_angulo_2d(cadera, rodilla_der, tobillo_der)
-        if angulo_rodilla_der < 150:
-            pierna_der_flexionada = True
-        print(f"📐 [DEBUG] Frame {frame_num} - Rodilla DER: {angulo_rodilla_der:.1f}°")
-    
-    # Usar el ángulo promedio de rodillas
-    angulo_rodilla_prom = (angulo_rodilla_izq + angulo_rodilla_der) / 2 if (cadera and rodilla_izq and tobillo_izq) else angulo_rodilla_der
-    
-    caminando = False
-    if keypoints_anterior is not None:
-        cadera_ant = obtener_punto(keypoints_anterior, 11)
-        if cadera and cadera_ant:
-            desplazamiento = abs(cadera[0] - cadera_ant[0])
-            if desplazamiento > 20:
-                caminando = True
-    
-    if sentado:
-        codigo_piernas = 1
-        estado_piernas = "Sentado"
-    elif arrodillado:
-        codigo_piernas = 6
-        estado_piernas = "Arrodillado"
-    elif caminando:
-        codigo_piernas = 7
-        estado_piernas = "Caminando"
-    elif pierna_izq_flexionada and pierna_der_flexionada:
-        codigo_piernas = 4
-        estado_piernas = "Agachado"
-    elif pierna_izq_flexionada or pierna_der_flexionada:
-        codigo_piernas = 5
-        estado_piernas = "Apoyo unilateral"
+    if not elevado_izq and not elevado_der:
+        codigo_brazo = 1
+        estado_brazo = "Ambos bajo hombro"
+    elif elevado_izq != elevado_der:
+        codigo_brazo = 2
+        estado_brazo = "Un brazo sobre hombro"
     else:
-        # Usar la función mejorada para detectar piernas por ángulo
-        codigo_piernas, estado_piernas, desc_piernas, _ = detectar_postura_piernas_yolo(
-            angulo_rodilla_prom, cadera, rodilla_izq, tobillo_izq
-        )
+        codigo_brazo = 3
+        estado_brazo = "Ambos brazos sobre hombro"
     
-    print(f"🦵 [DEBUG] Frame {frame_num} - Piernas: {estado_piernas} (código {codigo_piernas}) | Ángulo promedio: {angulo_rodilla_prom:.1f}°")
+    # Código de piernas
+    codigo_piernas = owas_data['piernas_codigo']
     
-    # ========== CARGA DINÁMICA ==========
-    carga_data = detectar_carga_dinamica(keypoints, keypoints_anterior, codigo_carga_constante)
-    codigo_carga = carga_data['codigo_carga']
-    estado_carga = carga_data['descripcion']
+    # Código de carga
+    codigo_carga = codigo_carga_constante
     
-    if carga_data['cargando']:
-        print(f"   📦 Carga: {carga_data['descripcion']} (código {codigo_carga})")
-    
+    # Clasificar riesgo
+    from Methods.comunes import clasificar_riesgo_owas
     nivel_riesgo, categoria, accion = clasificar_riesgo_owas(codigo_espalda, codigo_brazo, codigo_piernas, codigo_carga)
     codigo_owas = f"{codigo_espalda}{codigo_brazo}{codigo_piernas}{codigo_carga}"
     
@@ -554,24 +460,19 @@ def procesar_frame_owas(keypoints, frame, codigo_carga_constante=1, keypoints_an
         'accion': accion,
         'codigo_owas': codigo_owas,
         'angulo_espalda': angulo_espalda,
-        'torsion': torsion,
-        'torsion_angulo': torsion_data['angulo'] if torsion_data['detectada'] else 0,
-        'torsion_direccion': torsion_data['direccion'] if torsion_data['detectada'] else 'neutro',
-        'carga_detectada': carga_data['cargando'],
-        'carga_codigo': codigo_carga,
-        'carga_descripcion': carga_data['descripcion'],
-        'sentado': sentado,
-        'arrodillado': arrodillado,
-        'caminando': caminando,
-        'pierna_izq_flexionada': pierna_izq_flexionada,
-        'pierna_der_flexionada': pierna_der_flexionada,
-        'angulo_rodilla_izq': round(angulo_rodilla_izq, 1),
-        'angulo_rodilla_der': round(angulo_rodilla_der, 1)
+        'estado_espalda': estado_espalda,
+        'estado_brazo': estado_brazo,
+        'angulo_rodilla': owas_data.get('angulo_rodilla', 0),
+        'piernas_codigo': codigo_piernas,
+        'codigo_espalda': codigo_espalda,
+        'codigo_brazo': codigo_brazo,
+        'codigo_piernas': codigo_piernas,
+        'codigo_carga': codigo_carga
     }
 
 
 def procesar_owas(filepath, es_video, datos_operario_ia=None):
-    from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
+    """Procesa OWAS usando detector fusionado"""
     
     print(f"\n🔍 PROCESANDO OWAS - Archivo: {filepath}")
     print(f"   Tipo: {'Video' if es_video else 'Foto'}")
@@ -610,20 +511,16 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
         nombre_base = f"{datos_operario_ia.get('nombre', 'operario')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         MIN_FRAME_SEPARACION = 30
         
-        keypoints_anterior = None
-        frame_anterior = None
-        
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
             
             if frame_count % 15 == 0:
-                results = modelo_yolo(frame, verbose=False)
-                if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-                    keypoints = results[0].keypoints.data[0].cpu().numpy()
-                    
-                    resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante, keypoints_anterior, frame_count)
+                # Usar detector fusionado
+                resultado = procesar_frame_owas_fusion(frame, codigo_carga_constante, None, frame_count)
+                
+                if resultado:
                     resultados.append(resultado)
                     
                     tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
@@ -642,9 +539,6 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
                                 mejores_frames.append((resultado['nivel_riesgo'], img_path, frame_count))
                                 mejores_frames.sort(key=lambda x: x[0], reverse=True)
                                 mejores_frames = mejores_frames[:3]
-                    
-                    keypoints_anterior = keypoints
-                    frame_anterior = frame
                 
                 if total_frames > 0:
                     porcentaje = int((frame_count / total_frames) * 100)
@@ -660,7 +554,12 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
         if resultados:
             niveles = [r['nivel_riesgo'] for r in resultados]
             nivel_max = max(niveles)
-            codigo_mas_comun = max(set([r['codigo_owas'] for r in resultados]), key=[r['codigo_owas'] for r in resultados].count)
+            codigos = [r['codigo_owas'] for r in resultados]
+            codigo_mas_comun = max(set(codigos), key=codigos.count)
+            
+            # Obtener el primer resultado para ángulos
+            primer_resultado = resultados[0] if resultados else {}
+            angulo_espalda = primer_resultado.get('angulo_espalda', 0)
             
             recomendaciones = []
             if nivel_max >= 3:
@@ -671,15 +570,27 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
                 recomendaciones.append("⚠️ Ajustar altura de superficies de trabajo")
             else:
                 recomendaciones.append("✓ Mantener programa de pausas activas")
+                recomendaciones.append("✓ Postura dentro de parámetros normales")
             
             if peso_carga > 10:
                 recomendaciones.append(f"⚠️ La carga de {peso_carga} kg requiere asistencia mecánica o reducción de peso")
+            
+            # Preparar datos completos para Gemini
+            datos_ia = {
+                'codigo_owas': codigo_mas_comun,
+                'riesgo_max': nivel_max,
+                'peso_carga': peso_carga,
+                'angulo_espalda': angulo_espalda,
+                'codigo_espalda': int(codigo_mas_comun[0]) if len(codigo_mas_comun) >= 1 else 1,
+                'codigo_brazos': int(codigo_mas_comun[1]) if len(codigo_mas_comun) >= 2 else 1,
+                'codigo_piernas': int(codigo_mas_comun[2]) if len(codigo_mas_comun) >= 3 else 2,
+                'codigo_carga': int(codigo_mas_comun[3]) if len(codigo_mas_comun) >= 4 else 1
+            }
             
             dictamen_ia = None
             if datos_operario_ia:
                 try:
                     print(f"   🤖 Generando dictamen IA para OWAS...")
-                    datos_ia = {'codigo_owas': codigo_mas_comun, 'riesgo_max': nivel_max, 'peso_carga': peso_carga}
                     dictamen_ia = generar_dictamen_gemini_unificado('OWAS', datos_ia, datos_operario_ia, None)
                     if dictamen_ia:
                         print(f"   ✅ Dictamen IA generado correctamente")
@@ -694,7 +605,7 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
             
             return {
                 'puntuacion': nivel_max,
-                'nivel_riesgo': {1: 'Normal', 2: 'Moderado', 3: 'Alto', 4: 'Crítico'}.get(nivel_max, 'Desconocido'),
+                'nivel_riesgo': {1: 'Bajo', 2: 'Moderado', 3: 'Alto', 4: 'Crítico'}.get(nivel_max, 'Desconocido'),
                 'codigo_owas': codigo_mas_comun,
                 'recomendaciones': recomendaciones,
                 'dictamen_ia': dictamen_ia,
@@ -705,15 +616,14 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
         else:
             return {'puntuacion': 1, 'nivel_riesgo': 'Sin datos', 'recomendaciones': ['No se detectaron personas'], 'evolucion_temporal': []}
     else:
+        # Modo foto
         frame = cv2.imread(filepath)
         if frame is None:
             return {'error': 'No se pudo cargar la imagen'}
         
-        results = modelo_yolo(frame, verbose=False)
-        if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-            keypoints = results[0].keypoints.data[0].cpu().numpy()
-            resultado = procesar_frame_owas(keypoints, frame, codigo_carga_constante, None, 0)
-            
+        resultado = procesar_frame_owas_fusion(frame, codigo_carga_constante, None, 0)
+        
+        if resultado:
             recomendaciones = []
             if resultado['nivel_riesgo'] >= 3:
                 recomendaciones.append("🔴 INTERVENCIÓN INMEDIATA requerida")
@@ -721,15 +631,26 @@ def procesar_owas(filepath, es_video, datos_operario_ia=None):
                 recomendaciones.append("⚠️ Se requieren mejoras en el puesto")
             else:
                 recomendaciones.append("✓ Postura aceptable")
+                recomendaciones.append("✓ Sin riesgo significativo")
             
             if peso_carga > 10:
                 recomendaciones.append(f"⚠️ La carga de {peso_carga} kg requiere asistencia mecánica")
+            
+            datos_ia = {
+                'codigo_owas': resultado['codigo_owas'],
+                'riesgo_max': resultado['nivel_riesgo'],
+                'peso_carga': peso_carga,
+                'angulo_espalda': resultado.get('angulo_espalda', 0),
+                'codigo_espalda': resultado.get('codigo_espalda', 1),
+                'codigo_brazos': resultado.get('codigo_brazo', 1),
+                'codigo_piernas': resultado.get('codigo_piernas', 2),
+                'codigo_carga': codigo_carga_constante
+            }
             
             dictamen_ia = None
             if datos_operario_ia:
                 try:
                     print(f"   🤖 Generando dictamen IA para OWAS (foto)...")
-                    datos_ia = {'codigo_owas': resultado['codigo_owas'], 'riesgo_max': resultado['nivel_riesgo'], 'peso_carga': peso_carga}
                     dictamen_ia = generar_dictamen_gemini_unificado('OWAS', datos_ia, datos_operario_ia, None)
                 except Exception as e:
                     print(f"   ❌ Error en dictamen IA OWAS: {e}")
@@ -788,32 +709,33 @@ def procesar_rula(filepath, es_video, datos_operario_ia=None):
                 break
             
             if frame_count % 15 == 0:
-                results = modelo_yolo(frame, verbose=False)
-                if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-                    keypoints = results[0].keypoints.data[0].cpu().numpy()
-                    try:
-                        resultado = evaluar_rula(keypoints, peso_carga=peso_carga)
-                        resultados.append(resultado)
-                        
-                        tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
-                        evolucion_temporal.append([tiempo_seg, resultado.get('puntuacion_final', 1)])
-                        
-                        if resultado.get('puntuacion_final', 0) >= 5:
-                            es_momento_distinto = True
-                            for _, _, frame_guardado in mejores_frames:
-                                if abs(frame_guardado - frame_count) < MIN_FRAME_SEPARACION:
-                                    es_momento_distinto = False
-                                    break
-                            
-                            if es_momento_distinto and len(mejores_frames) < 5:
-                                img_path = guardar_frame_riesgo(frame, resultado.get('puntuacion_final', 0), 'RULA', nombre_base)
-                                if img_path:
-                                    mejores_frames.append((resultado.get('puntuacion_final', 0), img_path, frame_count))
-                                    mejores_frames.sort(key=lambda x: x[0], reverse=True)
-                                    mejores_frames = mejores_frames[:3]
-                    except Exception as e:
-                        print(f"   ⚠️ Error en frame {frame_count}: {e}")
-                        pass
+                if detector_fusion:
+                    landmarks_dict = detector_fusion.get_landmarks_dict(frame)
+                    if landmarks_dict:
+                        keypoints = detector_fusion.get_landmarks_array(frame)
+                        if keypoints is not None:
+                            try:
+                                resultado = evaluar_rula(keypoints, peso_carga=peso_carga)
+                                resultados.append(resultado)
+                                
+                                tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
+                                evolucion_temporal.append([tiempo_seg, resultado.get('puntuacion_final', 1)])
+                                
+                                if resultado.get('puntuacion_final', 0) >= 5:
+                                    es_momento_distinto = True
+                                    for _, _, frame_guardado in mejores_frames:
+                                        if abs(frame_guardado - frame_count) < MIN_FRAME_SEPARACION:
+                                            es_momento_distinto = False
+                                            break
+                                    
+                                    if es_momento_distinto and len(mejores_frames) < 5:
+                                        img_path = guardar_frame_riesgo(frame, resultado.get('puntuacion_final', 0), 'RULA', nombre_base)
+                                        if img_path:
+                                            mejores_frames.append((resultado.get('puntuacion_final', 0), img_path, frame_count))
+                                            mejores_frames.sort(key=lambda x: x[0], reverse=True)
+                                            mejores_frames = mejores_frames[:3]
+                            except Exception as e:
+                                print(f"   ⚠️ Error en frame {frame_count}: {e}")
                 
                 if total_frames > 0:
                     porcentaje = int((frame_count / total_frames) * 100)
@@ -873,45 +795,46 @@ def procesar_rula(filepath, es_video, datos_operario_ia=None):
         if frame is None:
             return {'error': 'No se pudo cargar la imagen'}
         
-        results = modelo_yolo(frame, verbose=False)
-        if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-            keypoints = results[0].keypoints.data[0].cpu().numpy()
-            resultado = evaluar_rula(keypoints, peso_carga=peso_carga)
-            
-            punt = resultado['puntuacion_final']
-            recomendaciones = []
-            if punt >= 6:
-                recomendaciones.append("🔴 Riesgo muy alto")
-            elif punt >= 4:
-                recomendaciones.append("⚠️ Riesgo medio")
-            else:
-                recomendaciones.append("✓ Riesgo bajo")
-            
-            if peso_carga > 10:
-                recomendaciones.append(f"⚠️ La carga de {peso_carga} kg incrementa el riesgo")
-            
-            dictamen_ia = None
-            if datos_operario_ia:
-                try:
-                    print(f"   🤖 Generando dictamen IA para RULA (foto)...")
-                    dictamen_ia = generar_dictamen_gemini_unificado('RULA', {'puntuacion_max': punt, 'peso_carga': peso_carga}, datos_operario_ia, None)
-                except Exception as e:
-                    print(f"   ❌ Error en dictamen IA RULA: {e}")
-            
-            if not dictamen_ia or dictamen_ia == 'No se pudo generar dictamen. Consulte a un especialista en ergonomía.':
-                dictamen_ia = generar_dictamen_profesional('RULA', {'puntuacion': punt, 'peso_carga': peso_carga}, datos_operario_ia)
-                print(f"   📋 Usando dictamen profesional para RULA")
-            
-            return {
-                'puntuacion': punt,
-                'nivel_riesgo': resultado['nivel_riesgo'],
-                'recomendaciones': recomendaciones,
-                'dictamen_ia': dictamen_ia,
-                'evolucion_temporal': [[0, punt]],
-                'peso_carga': peso_carga
-            }
-        else:
-            return {'puntuacion': 1, 'nivel_riesgo': 'Sin datos', 'recomendaciones': ['No se detectó ninguna persona'], 'evolucion_temporal': []}
+        if detector_fusion:
+            landmarks_dict = detector_fusion.get_landmarks_dict(frame)
+            if landmarks_dict:
+                keypoints = detector_fusion.get_landmarks_array(frame)
+                if keypoints is not None:
+                    resultado = evaluar_rula(keypoints, peso_carga=peso_carga)
+                    punt = resultado['puntuacion_final']
+                    recomendaciones = []
+                    if punt >= 6:
+                        recomendaciones.append("🔴 Riesgo muy alto")
+                    elif punt >= 4:
+                        recomendaciones.append("⚠️ Riesgo medio")
+                    else:
+                        recomendaciones.append("✓ Riesgo bajo")
+                    
+                    if peso_carga > 10:
+                        recomendaciones.append(f"⚠️ La carga de {peso_carga} kg incrementa el riesgo")
+                    
+                    dictamen_ia = None
+                    if datos_operario_ia:
+                        try:
+                            print(f"   🤖 Generando dictamen IA para RULA (foto)...")
+                            dictamen_ia = generar_dictamen_gemini_unificado('RULA', {'puntuacion_max': punt, 'peso_carga': peso_carga}, datos_operario_ia, None)
+                        except Exception as e:
+                            print(f"   ❌ Error en dictamen IA RULA: {e}")
+                    
+                    if not dictamen_ia or dictamen_ia == 'No se pudo generar dictamen. Consulte a un especialista en ergonomía.':
+                        dictamen_ia = generar_dictamen_profesional('RULA', {'puntuacion': punt, 'peso_carga': peso_carga}, datos_operario_ia)
+                        print(f"   📋 Usando dictamen profesional para RULA")
+                    
+                    return {
+                        'puntuacion': punt,
+                        'nivel_riesgo': resultado['nivel_riesgo'],
+                        'recomendaciones': recomendaciones,
+                        'dictamen_ia': dictamen_ia,
+                        'evolucion_temporal': [[0, punt]],
+                        'peso_carga': peso_carga
+                    }
+        
+        return {'puntuacion': 1, 'nivel_riesgo': 'Sin datos', 'recomendaciones': ['No se detectó ninguna persona'], 'evolucion_temporal': []}
 
 
 def procesar_reba(filepath, es_video, datos_operario_ia=None):
@@ -950,31 +873,32 @@ def procesar_reba(filepath, es_video, datos_operario_ia=None):
                 break
             
             if frame_count % 15 == 0:
-                results = modelo_yolo(frame, verbose=False)
-                if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-                    keypoints = results[0].keypoints.data[0].cpu().numpy()
-                    try:
-                        resultado = reba_calc.evaluar(keypoints, frame.shape[1], frame.shape[0], peso_carga=peso_carga, acople=0)
-                        resultados.append(resultado)
-                        
-                        tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
-                        evolucion_temporal.append([tiempo_seg, resultado.get('puntuacion_final', 1)])
-                        
-                        if resultado.get('puntuacion_final', 0) >= 8:
-                            es_momento_distinto = True
-                            for _, _, frame_guardado in mejores_frames:
-                                if abs(frame_guardado - frame_count) < MIN_FRAME_SEPARACION:
-                                    es_momento_distinto = False
-                                    break                            
-                            if es_momento_distinto and len(mejores_frames) < 5:
-                                img_path = guardar_frame_riesgo(frame, resultado.get('puntuacion_final', 0), 'REBA', nombre_base)
-                                if img_path:
-                                    mejores_frames.append((resultado.get('puntuacion_final', 0), img_path, frame_count))
-                                    mejores_frames.sort(key=lambda x: x[0], reverse=True)
-                                    mejores_frames = mejores_frames[:3]
-                    except Exception as e:
-                        print(f"   ⚠️ Error en frame {frame_count}: {e}")
-                        pass
+                if detector_fusion:
+                    landmarks_dict = detector_fusion.get_landmarks_dict(frame)
+                    if landmarks_dict:
+                        keypoints = detector_fusion.get_landmarks_array(frame)
+                        if keypoints is not None:
+                            try:
+                                resultado = reba_calc.evaluar(keypoints, frame.shape[1], frame.shape[0], peso_carga=peso_carga, acople=0)
+                                resultados.append(resultado)
+                                
+                                tiempo_seg = frame_count / fps if fps > 0 else frame_count / 30
+                                evolucion_temporal.append([tiempo_seg, resultado.get('puntuacion_final', 1)])
+                                
+                                if resultado.get('puntuacion_final', 0) >= 8:
+                                    es_momento_distinto = True
+                                    for _, _, frame_guardado in mejores_frames:
+                                        if abs(frame_guardado - frame_count) < MIN_FRAME_SEPARACION:
+                                            es_momento_distinto = False
+                                            break                            
+                                    if es_momento_distinto and len(mejores_frames) < 5:
+                                        img_path = guardar_frame_riesgo(frame, resultado.get('puntuacion_final', 0), 'REBA', nombre_base)
+                                        if img_path:
+                                            mejores_frames.append((resultado.get('puntuacion_final', 0), img_path, frame_count))
+                                            mejores_frames.sort(key=lambda x: x[0], reverse=True)
+                                            mejores_frames = mejores_frames[:3]
+                            except Exception as e:
+                                print(f"   ⚠️ Error en frame {frame_count}: {e}")
                 
                 if total_frames > 0:
                     porcentaje = int((frame_count / total_frames) * 100)
@@ -1036,47 +960,48 @@ def procesar_reba(filepath, es_video, datos_operario_ia=None):
         if frame is None:
             return {'error': 'No se pudo cargar la imagen'}
         
-        results = modelo_yolo(frame, verbose=False)
-        if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-            keypoints = results[0].keypoints.data[0].cpu().numpy()
-            resultado = reba_calc.evaluar(keypoints, frame.shape[1], frame.shape[0], peso_carga=peso_carga, acople=0)
-            
-            punt = resultado['puntuacion_final']
-            recomendaciones = []
-            if punt >= 11:
-                recomendaciones.append("🆘 RIESGO MUY ALTO - INTERVENCIÓN INMEDIATA")
-            elif punt >= 8:
-                recomendaciones.append("🔴 RIESGO ALTO - Intervención pronta")
-            elif punt >= 4:
-                recomendaciones.append("⚠️ RIESGO MEDIO - Mejoras necesarias")
-            else:
-                recomendaciones.append("✓ RIESGO BAJO - Mantener prácticas")
-            
-            if peso_carga > 10:
-                recomendaciones.append(f"⚠️ La carga de {peso_carga} kg requiere asistencia mecánica")
-            
-            dictamen_ia = None
-            if datos_operario_ia:
-                try:
-                    print(f"   🤖 Generando dictamen IA para REBA (foto)...")
-                    dictamen_ia = generar_dictamen_gemini_unificado('REBA', {'puntuacion_max': punt, 'peso_carga': peso_carga}, datos_operario_ia, None)
-                except Exception as e:
-                    print(f"   ❌ Error en dictamen IA REBA: {e}")
-            
-            if not dictamen_ia or dictamen_ia == 'No se pudo generar dictamen. Consulte a un especialista en ergonomía.':
-                dictamen_ia = generar_dictamen_profesional('REBA', {'puntuacion': punt, 'peso_carga': peso_carga}, datos_operario_ia)
-                print(f"   📋 Usando dictamen profesional para REBA")
-            
-            return {
-                'puntuacion': punt,
-                'nivel_riesgo': resultado['nivel_riesgo'],
-                'recomendaciones': recomendaciones,
-                'dictamen_ia': dictamen_ia,
-                'evolucion_temporal': [[0, punt]],
-                'peso_carga': peso_carga
-            }
-        else:
-            return {'puntuacion': 1, 'nivel_riesgo': 'Sin datos', 'recomendaciones': ['No se detectó ninguna persona'], 'evolucion_temporal': []}
+        if detector_fusion:
+            landmarks_dict = detector_fusion.get_landmarks_dict(frame)
+            if landmarks_dict:
+                keypoints = detector_fusion.get_landmarks_array(frame)
+                if keypoints is not None:
+                    resultado = reba_calc.evaluar(keypoints, frame.shape[1], frame.shape[0], peso_carga=peso_carga, acople=0)
+                    punt = resultado['puntuacion_final']
+                    recomendaciones = []
+                    if punt >= 11:
+                        recomendaciones.append("🆘 RIESGO MUY ALTO - INTERVENCIÓN INMEDIATA")
+                    elif punt >= 8:
+                        recomendaciones.append("🔴 RIESGO ALTO - Intervención pronta")
+                    elif punt >= 4:
+                        recomendaciones.append("⚠️ RIESGO MEDIO - Mejoras necesarias")
+                    else:
+                        recomendaciones.append("✓ RIESGO BAJO - Mantener prácticas")
+                    
+                    if peso_carga > 10:
+                        recomendaciones.append(f"⚠️ La carga de {peso_carga} kg requiere asistencia mecánica")
+                    
+                    dictamen_ia = None
+                    if datos_operario_ia:
+                        try:
+                            print(f"   🤖 Generando dictamen IA para REBA (foto)...")
+                            dictamen_ia = generar_dictamen_gemini_unificado('REBA', {'puntuacion_max': punt, 'peso_carga': peso_carga}, datos_operario_ia, None)
+                        except Exception as e:
+                            print(f"   ❌ Error en dictamen IA REBA: {e}")
+                    
+                    if not dictamen_ia or dictamen_ia == 'No se pudo generar dictamen. Consulte a un especialista en ergonomía.':
+                        dictamen_ia = generar_dictamen_profesional('REBA', {'puntuacion': punt, 'peso_carga': peso_carga}, datos_operario_ia)
+                        print(f"   📋 Usando dictamen profesional para REBA")
+                    
+                    return {
+                        'puntuacion': punt,
+                        'nivel_riesgo': resultado['nivel_riesgo'],
+                        'recomendaciones': recomendaciones,
+                        'dictamen_ia': dictamen_ia,
+                        'evolucion_temporal': [[0, punt]],
+                        'peso_carga': peso_carga
+                    }
+        
+        return {'puntuacion': 1, 'nivel_riesgo': 'Sin datos', 'recomendaciones': ['No se detectó ninguna persona'], 'evolucion_temporal': []}
 
 
 # ==================== RUTAS EXISTENTES ====================
@@ -1208,7 +1133,7 @@ def procesar_archivo():
         'peso_carga': peso_carga
     }
     
-    # PRIMERO: Procesar el archivo para obtener el resultado
+    # Procesar según método
     if metodo == 'owas':
         resultado = procesar_owas(filepath, es_video, datos_operario_ia)
     elif metodo == 'rula':
@@ -1223,7 +1148,7 @@ def procesar_archivo():
         resultado['evolucion_temporal'] = []
         print("⚠️ Se agregó evolucion_temporal vacío al resultado")
     
-    # SEGUNDO: Agregar los datos básicos al resultado
+    # Agregar datos básicos al resultado
     resultado['empresa'] = empresa
     resultado['puesto'] = puesto
     resultado['evaluador'] = evaluador
@@ -1233,7 +1158,7 @@ def procesar_archivo():
     resultado['operario_patologias'] = operario_patologias if operario_patologias else "Ninguna"
     resultado['metodo'] = metodo.upper()
     
-    # TERCERO: Agregar datos de normativa si corresponde
+    # Datos de normativa
     cumple_normativa = request.form.get('cumple_normativa') == 'true'
     resultado['cumple_normativa'] = cumple_normativa
     
@@ -1263,7 +1188,7 @@ def procesar_archivo():
     
     session['resultado'] = resultado
     
-    # ============ GUARDAR EN HISTORIAL USANDO SQLITE ============
+    # Guardar en historial usando SQLite
     token = session.get('user_token')
     if token:
         try:
@@ -1358,7 +1283,6 @@ def exportar_pdf():
                 datos_rosa=datos_rosa_ejemplo
             )
         elif metodo == 'REBA':
-            # Para REBA
             resultados_lista = [{
                 'puntuacion_final': resultado.get('puntuacion', 1),
                 'puntuacion_A': 0,
@@ -1383,7 +1307,6 @@ def exportar_pdf():
                 acople=0
             )
         else:
-            # Para OWAS y RULA (uso del generador genérico)
             generar_reporte_generico(
                 resultado=resultado,
                 empresa_input=empresa,
@@ -1397,9 +1320,7 @@ def exportar_pdf():
                 metodo=metodo
             )
         
-        # Buscar el PDF generado
         import glob
-        import time
         
         archivos_pdf = glob.glob(f"reports/YOLO_*.pdf")
         

@@ -215,11 +215,41 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         border: 1px solid var(--border-color);
         position: relative;
-        height: 320px;
-        max-height: 320px;
+        height: 380px;
+        max-height: 380px;
         width: 100%;
         overflow: hidden;
     }
+
+    .legend {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        flex-wrap: wrap;
+        background: var(--gray-bg);
+        border-radius: 12px;
+    }
+
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+    }
+
+    .legend-color.green { background: #28a745; }
+    .legend-color.yellow { background: #ffc107; }
+    .legend-color.orange { background: #fd7e14; }
+    .legend-color.red { background: #dc3545; }
 
     .images-grid {
         display: grid;
@@ -426,8 +456,13 @@
 
         <h3 class="section-title">Evolución Temporal del Riesgo</h3>
         <div class="chart-container">
-            <canvas id="riskChart"></canvas>
-            <p class="text-muted text-center mt-2" style="font-size: 0.75rem;">Evolución del nivel de riesgo durante el análisis</p>
+            <canvas id="riskChart" style="width: 100%; height: 300px;"></canvas>
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color green"></div><span>Riesgo Bajo (1)</span></div>
+            <div class="legend-item"><div class="legend-color yellow"></div><span>Riesgo Moderado (2)</span></div>
+            <div class="legend-item"><div class="legend-color orange"></div><span>Riesgo Alto (3)</span></div>
+            <div class="legend-item"><div class="legend-color red"></div><span>Riesgo Crítico (4)</span></div>
         </div>
 
         <div id="imagenesRiesgoContainer" style="display: none;">
@@ -476,28 +511,6 @@
 <script>
 let riskChartInstance = null;
 
-function getColorByNivel(nivel, metodo) {
-    if (metodo === 'OWAS') {
-        if (nivel === 1) return '#28a745';
-        if (nivel === 2) return '#ffc107';
-        if (nivel === 3) return '#fd7e14';
-        if (nivel >= 4) return '#dc3545';
-    }
-    else if (metodo === 'RULA') {
-        if (nivel <= 2) return '#28a745';
-        if (nivel <= 4) return '#ffc107';
-        if (nivel <= 6) return '#fd7e14';
-        if (nivel >= 7) return '#dc3545';
-    }
-    else if (metodo === 'REBA') {
-        if (nivel === 1) return '#28a745';
-        if (nivel <= 3) return '#ffc107';
-        if (nivel <= 7) return '#fd7e14';
-        if (nivel >= 8) return '#dc3545';
-    }
-    return '#6c757d';
-}
-
 function actualizarGrafico(evolucionTemporal, metodo) {
     const canvas = document.getElementById('riskChart');
     if (!canvas) return;
@@ -521,9 +534,9 @@ function actualizarGrafico(evolucionTemporal, metodo) {
         yTitle = 'Puntuación REBA (1-15)';
     }
 
+    // Procesar datos
     let tiempoData = [];
     let riesgoData = [];
-    let coloresFondo = [];
 
     let datos = evolucionTemporal;
     if (typeof datos === 'string') {
@@ -531,9 +544,8 @@ function actualizarGrafico(evolucionTemporal, metodo) {
     }
 
     if (datos && Array.isArray(datos) && datos.length > 0) {
-        let paso = datos.length > 150 ? Math.ceil(datos.length / 40) : 1;
-
-        for (let i = 0; i < datos.length; i += paso) {
+        // Mostrar TODOS los puntos (sin filtrar)
+        for (let i = 0; i < datos.length; i++) {
             let pt = datos[i];
             if (pt && pt.length >= 2) {
                 let t = parseFloat(pt[0]).toFixed(1);
@@ -541,41 +553,76 @@ function actualizarGrafico(evolucionTemporal, metodo) {
                 if (!isNaN(t) && !isNaN(r)) {
                     tiempoData.push(t);
                     riesgoData.push(r);
-                    coloresFondo.push(getColorByNivel(r, metodo));
                 }
             }
         }
     }
 
+    // Si no hay datos, crear ejemplo
     if (tiempoData.length === 0) {
-        tiempoData = ['0.0', '1.0', '2.0', '3.0', '4.0', '5.0'];
-        riesgoData = [1, 2, 3, 2, 1, 1];
-        coloresFondo = riesgoData.map(r => getColorByNivel(r, metodo));
+        tiempoData = ['0', '5', '10', '15', '20', '25', '30'];
+        riesgoData = [1, 2, 3, 2, 4, 3, 1];
     }
 
+    // Configurar colores de puntos según nivel de riesgo
+    const pointColors = riesgoData.map(r => {
+        if (r <= 1) return '#28a745';
+        if (r === 2) return '#ffc107';
+        if (r === 3) return '#fd7e14';
+        return '#dc3545';
+    });
+
     riskChartInstance = new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: tiempoData,
             datasets: [{
                 label: yTitle,
                 data: riesgoData,
-                backgroundColor: coloresFondo,
-                borderWidth: 1,
-                borderRadius: 4,
-                barPercentage: 0.6
+                borderColor: '#007aff',
+                borderWidth: 3,
+                backgroundColor: 'rgba(0, 122, 255, 0.05)',
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: pointColors,
+                pointBorderColor: '#fff',
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBorderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const nivel = context.raw;
+                            if (metodo === 'OWAS') {
+                                const niveles = {1: 'Bajo', 2: 'Moderado', 3: 'Alto', 4: 'Crítico'};
+                                return `Nivel: ${niveles[nivel]} (${nivel}/4)`;
+                            } else {
+                                return `Puntuación: ${nivel}`;
+                            }
+                        }
+                    }
+                },
+                legend: { position: 'top' }
+            },
             scales: {
                 y: {
-                    min: 1,
+                    min: metodo === 'OWAS' ? 1 : 0,
                     max: maxY,
-                    ticks: { stepSize: 1 }
+                    title: { display: true, text: yTitle, font: { size: 12, weight: 'bold' } },
+                    ticks: { stepSize: stepSize },
+                    grid: { color: '#e0e0e0' }
                 },
-                x: { ticks: { maxTicksLimit: 20, autoSkip: true } }
+                x: {
+                    title: { display: true, text: 'Tiempo (segundos)', font: { size: 12, weight: 'bold' } },
+                    ticks: { maxTicksLimit: 15, autoSkip: true },
+                    grid: { display: false }
+                }
             }
         }
     });
@@ -613,7 +660,14 @@ function generarPlanillasSRT(resultado, metodo, puntuacion, nivelRiesgo) {
     ];
 
     factores.forEach(f => {
-        html += `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>${f.c}</strong> - ${f.n}</td><td style="padding: 8px; border: 1px solid #ddd;">${f.p ? descripcionTarea : '-'}</td><td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? horasExposicion+' h' : '-'}</td><td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? 'X' : '-'}</td><td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? horasExposicion+' h' : '-'}</td><td style="background:${f.col}; padding: 8px; border: 1px solid #ddd;">${f.r}</td></tr>`;
+        html += `<tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>${f.c}</strong> - ${f.n}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${f.p ? descripcionTarea : '-'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? horasExposicion+' h' : '-'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? 'X' : '-'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align:center;">${f.p ? horasExposicion+' h' : '-'}</td>
+            <td style="background:${f.col}; padding: 8px; border: 1px solid #ddd;">${f.r}</td>
+        </tr>`;
     });
     html += '</tbody></table></div>';
     return html;
@@ -624,13 +678,12 @@ function cargarYRenderizar(id, autoPrint = false) {
     fetch(url)
         .then(response => response.json())
         .then(item => {
-            // El objeto 'item' contiene todos los datos del análisis, tanto los que están en la raíz como los anidados en 'resultado'
             console.log('Datos recibidos de la API:', item);
 
             const resultado = item.resultado || {};
             const metodo = item.metodo || resultado.metodo || 'OWAS';
 
-            // --- FICHA DEL PERSONAL (Prioriza los datos de la raíz 'item') ---
+            // --- FICHA DEL PERSONAL ---
             const operarioNombre = document.getElementById('operarioNombre');
             if (operarioNombre) {
                 const nombre = item.operario_nombre || resultado.operario_nombre || 'N/A';
@@ -675,11 +728,10 @@ function cargarYRenderizar(id, autoPrint = false) {
             const puntuacionTexto = document.getElementById('puntuacionTexto');
             if (puntuacionTexto) puntuacionTexto.innerHTML = `Puntuación: ${puntuacion}/${metodo==='OWAS'?'4':metodo==='RULA'?'7':'15'}`;
 
-            // --- RECOMENDACIONES (CORREGIDO: usa item.recomendaciones) ---
+            // --- RECOMENDACIONES ---
             const recList = document.getElementById('recomendacionesList');
             if (recList) {
                 recList.innerHTML = '';
-                // Las recomendaciones pueden venir en la raíz de 'item'
                 const recomendaciones = item.recomendaciones || resultado.recomendaciones || [];
                 if (recomendaciones.length > 0) {
                     recomendaciones.forEach(rec => {
@@ -693,10 +745,9 @@ function cargarYRenderizar(id, autoPrint = false) {
                 }
             }
 
-            // --- DICTAMEN IA (CORREGIDO: usa item.dictamen_ia) ---
+            // --- DICTAMEN IA ---
             const dictamenContainer = document.getElementById('dictamenContainer');
             if (dictamenContainer) {
-                // El dictamen IA puede venir en la raíz de 'item' o dentro de 'resultado'
                 const dictamen = item.dictamen_ia || resultado.dictamen_ia;
                 if (dictamen) {
                     const dictamenTexto = document.getElementById('dictamenTexto');
@@ -707,7 +758,7 @@ function cargarYRenderizar(id, autoPrint = false) {
                 }
             }
 
-            // --- PLANILLAS SRT (CORREGIDO: usa item.cumple_normativa) ---
+            // --- PLANILLAS SRT ---
             const planillasContainer = document.getElementById('planillasContainer');
             if (planillasContainer) {
                 const cumpleNormativa = item.cumple_normativa === true || resultado.cumple_normativa === true;

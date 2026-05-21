@@ -27,31 +27,27 @@ from Methods.metodologias.rosa import evaluar_rosa, recopilar_datos_rosa_interac
 # ==================== FUNCIONES COMUNES (importadas) ====================
 from Methods.comunes import obtener_punto, calcular_angulo_2d, clasificar_riesgo_owas, calcular_torsion_avanzada, detectar_carga_dinamica
 
-# ==================== CONFIGURACIÓN DE GEMINI ====================
-import google.generativeai as genai
+# ==================== CONFIGURACIÓN DE GEMINI (NUEVA VERSIÓN) ====================
+from google import genai
 
-API_KEY_GEMINI = os.getenv('GEMINI_API_KEY', "AIzaSyBkZ47zhVjrYrDdmZBxFs3GGdAY6ZY198o")
+API_KEY_GEMINI = os.getenv('GEMINI_API_KEY', "AIzaSyCb8DWEBApxNkc7VjA9pql2k9jEaEiSnJI")
 GEMINI_MODEL = "gemini-2.5-flash"
 
-
 def validar_api_gemini():
-    """Valida que la API key de Gemini funcione correctamente"""
     try:
-        genai.configure(api_key=API_KEY_GEMINI)
+        client = genai.Client(api_key=API_KEY_GEMINI)
         print("✅ API Key de Gemini validada correctamente")
-        return True
+        return client
     except Exception as e:
-        print(f"⚠️ Advertencia: Error con API Key de Gemini: {e}")
-        print("   El sistema usará dictamen de respaldo")
-        return False
-
+        print(f"⚠️ Error con API Key de Gemini: {e}")
+        return None
 
 cliente_gemini = validar_api_gemini()
 
 
 def generar_dictamen_con_gemini(datos_owas, operario):
     """Genera dictamen experto usando Gemini (para OWAS)"""
-    if not cliente_gemini:
+    if cliente_gemini is None:
         print("⚠️ Gemini no disponible, usando dictamen de respaldo")
         return generar_dictamen_fallback(datos_owas, operario)
 
@@ -107,8 +103,10 @@ Por favor, emití un dictamen profesional con:
 """
 
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        response = model.generate_content(f"{system_instruction}\n\n{user_prompt}")
+        response = cliente_gemini.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=f"{system_instruction}\n\n{user_prompt}"
+        )
         if response and response.text:
             return response.text
         else:
@@ -175,171 +173,162 @@ Recomendaciones preventivas:
 • Registrar y monitorear cualquier queja musculoesquelética"""
 
 
-# ==================== NUEVA FUNCIÓN UNIFICADA PARA GEMINI ====================
+# ==================== FUNCIÓN UNIFICADA PARA GEMINI (CORREGIDA) ====================
 
 def generar_dictamen_gemini_unificado(metodo, resultados, datos_operario, datos_adicionales=None):
     """
     Genera dictamen experto usando Gemini para cualquier método ergonómico
-    
-    Args:
-        metodo: 'OWAS', 'RULA', 'REBA', 'ROSA'
-        resultados: dict con resultados del método
-        datos_operario: dict con nombre, edad, antiguedad, patologias
-        datos_adicionales: dict con datos específicos del método
-    
-    Returns:
-        dictamen en texto plano
     """
-    if not cliente_gemini:
+    if cliente_gemini is None:
         print(f"⚠️ Gemini no disponible, usando dictamen de respaldo para {metodo}")
         return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
     
-    nombre = datos_operario['nombre']
-    edad = datos_operario['edad']
-    antiguedad = datos_operario['antiguedad']
-    patologias = datos_operario['patologias']
+    nombre = datos_operario.get('nombre', 'Operario')
+    edad = datos_operario.get('edad', '')
+    antiguedad = datos_operario.get('antiguedad', '')
+    patologias = datos_operario.get('patologias', '')
     
-    # Construir prompt según el método
-    if metodo == 'RULA':
+    # ==================== OWAS ====================
+    if metodo == 'OWAS':
         system_instruction = """
-Actuás como un Especialista en Ergonomía de Miembros Superiores y Trastornos Musculoesqueléticos.
-Tu enfoque es la prevención de lesiones en hombros, codos, muñecas y cuello.
+Eres un Ingeniero Senior en Ergonomía con 20 años de experiencia.
 
-REGLAS DE ORO:
-- Analizar específicamente los ángulos de brazo, antebrazo, muñeca y cuello
-- Priorizar soluciones de ingeniería (alturas, alcances, herramientas)
-- Considerar la repetitividad y la fuerza
-- Si el operario tiene patologías, el dictamen debe ser especialmente protector
-- Dictamen conciso pero completo (máximo 350 palabras)
-- Usar viñetas (•)
-- No usar markdown
+Tu tarea es generar un DICTAMEN TÉCNICO-ERGONÓMICO basado en el método OWAS.
+
+REGLAS ESTRICTAS:
+1. El código OWAS tiene 4 dígitos: ESPALDA | BRAZOS | PIERNAS | CARGA
+2. Interpretación:
+   - Espalda: 1=Recta, 2=Inclinada, 3=Con torsión, 4=Extrema
+   - Brazos: 1=Ambos bajo hombro, 2=Uno sobre, 3=Ambos sobre
+   - Piernas: 1=Sentado, 2=Parado recto, 3=Apoyo unilateral, 4=Flexionadas, 5=Sentadilla, 6=Arrodillado
+   - Carga: 1=<10kg, 2=10-20kg, 3=>20kg
+3. Nivel de riesgo: 1=BAJO, 2=MODERADO, 3=ALTO, 4=CRÍTICO
+4. Si el riesgo es BAJO (nivel 1), indica claramente que NO hay exposición dañina
+5. Recomendaciones específicas y accionables
+6. Máximo 350 palabras, usar viñetas (•)
 """
         
+        codigo = resultados.get('codigo_owas', '1121')
+        riesgo_nivel = resultados.get('riesgo_max', 1)
+        peso_carga = resultados.get('peso_carga', 0)
+        angulo_espalda = resultados.get('angulo_espalda', 0)
+        
+        # Interpretación automática
+        codigo_str = str(codigo)
+        c_espalda = int(codigo_str[0]) if len(codigo_str) >= 1 else 1
+        c_brazos = int(codigo_str[1]) if len(codigo_str) >= 2 else 1
+        c_piernas = int(codigo_str[2]) if len(codigo_str) >= 3 else 2
+        c_carga = int(codigo_str[3]) if len(codigo_str) >= 4 else 1
+        
+        texto_espalda = {1: 'Recta', 2: 'Inclinada', 3: 'Con torsión', 4: 'Extrema'}.get(c_espalda, '?')
+        texto_brazos = {1: 'Ambos bajo hombro', 2: 'Un brazo sobre', 3: 'Ambos sobre'}.get(c_brazos, '?')
+        texto_piernas = {1: 'Sentado', 2: 'Parado recto', 3: 'Apoyo unilateral', 4: 'Piernas flexionadas', 5: 'Sentadilla', 6: 'Arrodillado'}.get(c_piernas, '?')
+        texto_carga = {1: '<10kg', 2: '10-20kg', 3: '>20kg'}.get(c_carga, '?')
+        
         user_prompt = f"""
-Generá un Dictamen Técnico-Ergonómico basado en resultados RULA:
-
 DATOS DEL OPERARIO:
 - Nombre: {nombre}
 - Edad: {edad} años
-- Antigüedad en el puesto: {antiguedad} años
-- Patologías previas: {patologias if patologias else 'Ninguna informada'}
+- Antigüedad: {antiguedad} años
+- Patologías: {patologias if patologias else 'Ninguna'}
+
+RESULTADOS OWAS:
+- Código OWAS: {codigo}
+- Nivel de riesgo: {riesgo_nivel}/4
+- Peso de carga: {peso_carga} kg
+- Ángulo de espalda: {angulo_espalda}°
+
+INTERPRETACIÓN DEL CÓDIGO {codigo}:
+- Espalda: {texto_espalda} (dígito {c_espalda})
+- Brazos: {texto_brazos} (dígito {c_brazos})
+- Piernas: {texto_piernas} (dígito {c_piernas})
+- Carga: {texto_carga} (dígito {c_carga})
+
+Generá un dictamen profesional con:
+1. Una conclusión clara del nivel de riesgo
+2. Recomendaciones de ingeniería específicas
+3. Recomendaciones organizacionales
+4. Seguimiento médico si corresponde
+"""
+    
+    # ==================== RULA ====================
+    elif metodo == 'RULA':
+        system_instruction = """
+Eres un Especialista en Ergonomía de Miembros Superiores.
+Genera un dictamen profesional basado en RULA.
+"""
+        punt = resultados.get('puntuacion_max', 1)
+        user_prompt = f"""
+DATOS DEL OPERARIO:
+- Nombre: {nombre}
+- Edad: {edad} años
+- Patologías: {patologias if patologias else 'Ninguna'}
 
 RESULTADOS RULA:
-- Puntuación máxima: {resultados.get('puntuacion_max', 0)}/7
-- Puntuación promedio: {resultados.get('puntuacion_prom', 0)}/7
-- Nivel de riesgo: {resultados.get('nivel_riesgo', 'N/A')}
-- Distribución de niveles: {resultados.get('estadisticas', {})}
+- Puntuación máxima: {punt}/7
 
-Por favor, emití un dictamen profesional con:
-1. Un párrafo inicial de conclusión del riesgo para miembros superiores
-2. Viñetas con recomendaciones de ingeniería específicas (alturas, alcances, herramientas)
-3. Recomendaciones de pausas activas y estiramientos específicos
-4. Una nota final sobre seguimiento médico si corresponde
+Generá un dictamen profesional con recomendaciones específicas.
 """
     
+    # ==================== REBA ====================
     elif metodo == 'REBA':
         system_instruction = """
-Actuás como un Ingeniero Biomecánico especializado en evaluación de carga postural global.
-Tu análisis integra tronco, cuello, piernas y miembros superiores.
-
-REGLAS DE ORO:
-- Analizar la interacción entre carga, agarre y postura
-- Considerar el peso manipulado y la calidad del agarre
-- Proponer cambios de ingeniería específicos
-- Si el operario tiene patologías, el dictamen debe ser crítico
-- Dictamen conciso (máximo 350 palabras)
-- Usar viñetas (•)
+Eres un Ingeniero Biomecánico especializado en REBA.
 """
-        
+        punt = resultados.get('puntuacion_max', 1)
         user_prompt = f"""
-Generá un Dictamen Técnico-Ergonómico basado en resultados REBA:
-
 DATOS DEL OPERARIO:
 - Nombre: {nombre}
 - Edad: {edad} años
-- Antigüedad en el puesto: {antiguedad} años
-- Patologías previas: {patologias if patologias else 'Ninguna informada'}
 
 RESULTADOS REBA:
-- Puntuación máxima: {resultados.get('puntuacion_max', 0)}/15
-- Puntuación promedio: {resultados.get('puntuacion_prom', 0)}/15
-- Nivel de riesgo: {resultados.get('nivel_riesgo', 'N/A')}
-- Puntaje A (tronco+cuello+piernas): {resultados.get('puntaje_A', 0)}/12
-- Puntaje B (brazo+antebrazo+muñeca): {resultados.get('puntaje_B', 0)}/12
-- Distribución de niveles: {resultados.get('estadisticas', {})}
+- Puntuación máxima: {punt}/15
 
-DATOS ADICIONALES:
-- Carga manipulada: {datos_adicionales.get('carga', 0)}/3 (0=sin carga, 1=5-10kg, 2=>10kg, 3=carga brusca)
-- Calidad del agarre: {datos_adicionales.get('acople', 0)}/3 (0=bueno, 1=regular, 2=malo, 3=inaceptable)
-
-Por favor, emití un dictamen profesional con:
-1. Un párrafo inicial de conclusión del riesgo global (cuerpo completo)
-2. Viñetas con recomendaciones de ingeniería específicas (carga, agarre, posturas)
-3. Recomendaciones organizacionales (rotación, pausas)
-4. Una nota final sobre seguimiento médico si corresponde
+Generá un dictamen profesional.
 """
     
+    # ==================== ROSA ====================
     elif metodo == 'ROSA':
         system_instruction = """
-Actuás como un Especialista en Ergonomía de Oficina y Teletrabajo.
-Tu enfoque es la prevención de trastornos musculoesqueléticos en entornos de oficina.
-
-REGLAS DE ORO:
-- Evaluar silla, monitor, teclado, mouse y teléfono
-- Considerar el tiempo de uso continuo
-- Proponer ajustes prácticos y económicos
-- Dictamen conciso (máximo 350 palabras)
-- Usar viñetas (•)
+Eres un Especialista en Ergonomía de Oficina.
 """
-        
+        punt = resultados.get('puntuacion_final', 1)
         user_prompt = f"""
-Generá un Dictamen Técnico-Ergonómico basado en resultados ROSA:
-
 DATOS DEL OPERARIO:
 - Nombre: {nombre}
 - Edad: {edad} años
-- Antigüedad en el puesto: {antiguedad} años
-- Patologías previas: {patologias if patologias else 'Ninguna informada'}
 
 RESULTADOS ROSA:
-- Puntuación silla: {resultados.get('silla', 'N/A')}/10
-- Puntuación monitor: {resultados.get('monitor', 'N/A')}/10
-- Puntuación teclado: {resultados.get('teclado', 'N/A')}/10
-- Puntuación mouse: {resultados.get('mouse', 'N/A')}/10
-- PUNTUACIÓN FINAL: {resultados.get('puntuacion_final', 0)}/10
-- NIVEL DE RIESGO: {resultados.get('nivel_riesgo', 'N/A')}
-- USO CONTINUO >1h: {'Sí' if datos_adicionales.get('uso_continuo') else 'No'}
+- Puntuación final: {punt}/10
 
-Por favor, emití un dictamen profesional con:
-1. Un párrafo inicial de conclusión del riesgo del puesto de oficina
-2. Viñetas con recomendaciones específicas por componente (silla, monitor, teclado, mouse)
-3. Recomendaciones sobre pausas activas y organización del trabajo
-4. Una nota final sobre ajustes inmediatos si corresponde
+Generá un dictamen profesional.
 """
     
     else:
         return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
     
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        response = model.generate_content(f"{system_instruction}\n\n{user_prompt}")
+        response = cliente_gemini.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=f"{system_instruction}\n\n{user_prompt}"
+        )
         if response and response.text:
             return response.text
         else:
-            print(f"⚠️ Gemini no generó respuesta para {metodo}, usando dictamen de respaldo")
+            print(f"⚠️ Gemini no generó respuesta para {metodo}")
             return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
     except Exception as e:
-        print(f"❌ Error al generar dictamen con Gemini para {metodo}: {e}")
+        print(f"❌ Error en Gemini: {e}")
         return generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales)
 
 
 def generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, datos_adicionales):
     """Dictamen de respaldo para cualquier método si Gemini no está disponible"""
     
-    nombre = datos_operario['nombre']
-    edad = datos_operario['edad']
-    antiguedad = datos_operario['antiguedad']
-    patologias = datos_operario['patologias']
+    nombre = datos_operario.get('nombre', 'Operario')
+    edad = datos_operario.get('edad', '')
+    antiguedad = datos_operario.get('antiguedad', '')
+    patologias = datos_operario.get('patologias', '')
     patologia_riesgo = any(p in patologias.lower() for p in ['hernia', 'disco', 'lumbar', 'cervical', 'dolor', 'hombro'])
     
     if metodo == 'RULA':
@@ -347,162 +336,124 @@ def generar_dictamen_fallback_unificado(metodo, resultados, datos_operario, dato
         if punt >= 7 or patologia_riesgo:
             return f"""DICTAMEN ERGONÓMICO RULA - RIESGO MUY ALTO
 
-El operario {nombre} ({edad} años, {antiguedad} años de antigüedad) presenta una puntuación RULA de {punt}/7, lo que indica un nivel de riesgo MUY ALTO que requiere intervención INMEDIATA.
+El operario {nombre} ({edad} años, {antiguedad} años de antigüedad) presenta una puntuación RULA de {punt}/7, riesgo MUY ALTO.
 
 Recomendaciones URGENTES:
-• ¡INTERVENCIÓN INMEDIATA REQUERIDA!
-• Rediseñar completamente el puesto para miembros superiores
-• Suspender tareas de alto riesgo hasta evaluación detallada
-• Instalar ayudas mecánicas y apoyabrazos ergonómicos
-• Evaluación médica INMEDIATA
-
-Medidas preventivas:
-• Pausas activas enfocadas en hombros y muñecas cada 30 minutos
-• Capacitación en técnicas de alcance seguro
-• Rotación de tareas cada 45 minutos"""
+• Rediseñar completamente el puesto
+• Evaluación médica INMEDIATA"""
         elif punt >= 5:
             return f"""DICTAMEN ERGONÓMICO RULA - RIESGO ALTO
 
-El operario {nombre} presenta una puntuación RULA de {punt}/7, indicando un nivel de riesgo ALTO.
+El operario {nombre} presenta RULA {punt}/7 - Riesgo ALTO.
 
-Recomendaciones prioritarias:
+Recomendaciones:
 • Rediseñar el puesto en 30 días
-• Ajustar alturas de trabajo (mantener brazos relajados)
-• Reducir alcances frontales y laterales
-• Capacitación en técnicas posturales específicas
-
-Medidas:
-• Pausas activas cada 45 minutos
-• Evaluación médica en 30 días
-• Monitoreo postural semanal"""
+• Pausas activas cada 45 minutos"""
         elif punt >= 3:
             return f"""DICTAMEN ERGONÓMICO RULA - RIESGO MEDIO
 
-El puesto evaluado presenta una puntuación RULA de {punt}/7, con riesgo MEDIO.
+Puntuación RULA {punt}/7 - Riesgo MEDIO.
 
 Recomendaciones:
-• Revisar posición de brazos y muñecas
-• Ajustar altura de teclado y mouse
-• Implementar pausas activas cada 2 horas
+• Ajustar alturas de trabajo
 • Monitoreo trimestral"""
         else:
             return f"""DICTAMEN ERGONÓMICO RULA - RIESGO BAJO
 
-Las condiciones posturales de miembros superiores del operario {nombre} son aceptables.
-
-Recomendaciones preventivas:
-• Mantener buenas prácticas posturales
-• Pausas activas preventivas cada 2 horas
-• Auditoría ergonómica anual"""
-    
-    elif metodo == 'REBA':
-        punt = resultados.get('puntuacion_max', 1)
-        if punt >= 11 or patologia_riesgo:
-            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO MUY ALTO
-
-El operario {nombre} ({edad} años, {antiguedad} años de antigüedad) presenta una puntuación REBA de {punt}/15, riesgo MUY ALTO - INTERVENCIÓN INMEDIATA.
-
-Recomendaciones URGENTES:
-• ¡SUSPENDER TAREA hasta rediseño completo!
-• Eliminar o reducir drásticamente la carga manipulada
-• Instalar ayudas mecánicas OBLIGATORIAS (polipastos, balancines)
-• Rediseñar el agarre de herramientas (actualmente crítico)
-• Evaluación médica INMEDIATA
-
-Medidas organizacionales:
-• Reasignar temporalmente al operario
-• Rotación cada 15 minutos si la tarea no puede suspenderse
-• Capacitación urgente en técnicas de levantamiento"""
-        elif punt >= 8:
-            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO ALTO
-
-El trabajador {nombre} presenta una puntuación REBA de {punt}/15, riesgo ALTO.
-
-Recomendaciones prioritarias (30 días):
-• Rediseñar el puesto (tronco <20°, brazos relajados)
-• Mejorar agarre de herramientas (superficies antideslizantes)
-• Reducir carga manipulada mediante ayudas mecánicas
-• Pausas activas cada 30 minutos
-
-Seguimiento:
-• Evaluación médica en 30 días
-• Monitoreo postural semanal"""
-        elif punt >= 4:
-            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO MEDIO
-
-Puntuación REBA {punt}/15 - Riesgo MEDIO.
-
-Recomendaciones:
-• Ajustar alturas y alcances del puesto
-• Capacitar en técnicas de levantamiento seguro
-• Implementar pausas activas cada 2 horas
-• Monitoreo ergonómico trimestral"""
-        else:
-            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO BAJO
-
-Condiciones posturales aceptables según REBA.
+Las condiciones posturales son aceptables.
 
 Recomendaciones preventivas:
 • Mantener buenas prácticas
-• Pausas activas preventivas
-• Auditoría anual"""
+• Pausas activas cada 2 horas"""
+    
+    elif metodo == 'REBA':
+        punt = resultados.get('puntuacion_max', 1)
+        if punt >= 11:
+            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO MUY ALTO
+
+Puntuación REBA {punt}/15 - ¡INTERVENCIÓN INMEDIATA!"""
+        elif punt >= 8:
+            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO ALTO
+
+Rediseñar el puesto en 30 días."""
+        elif punt >= 4:
+            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO MEDIO
+
+Implementar rotación de tareas."""
+        else:
+            return f"""DICTAMEN ERGONÓMICO REBA - RIESGO BAJO
+
+Mantener buenas prácticas."""
     
     elif metodo == 'ROSA':
         punt = resultados.get('puntuacion_final', 1)
         if punt >= 8:
             return f"""DICTAMEN ERGONÓMICO ROSA - RIESGO MUY ALTO
 
-El puesto del operario {nombre} presenta una puntuación ROSA de {punt}/10 - INTERVENCIÓN INMEDIATA.
-
-Recomendaciones URGENTES:
-• Reemplazar o ajustar silla ergonómicamente
-• Reubicar monitor a la altura de los ojos
-• Instalar reposamuñecas y ajustar teclado
-• Evaluación médica
-
-Medidas:
-• Pausas activas cada 30 minutos
-• Revisión en 7 días"""
+Intervención inmediata en el puesto de oficina (puntuación: {punt}/10)."""
         elif punt >= 6:
             return f"""DICTAMEN ERGONÓMICO ROSA - RIESGO MEDIO/ALTO
 
-Puntuación ROSA {punt}/10 - Requiere mejoras programadas (30 días).
-
-Recomendaciones:
-• Ajustar silla, monitor y teclado
-• Implementar pausas activas cada 45-60 minutos
-• Capacitación en configuración ergonómica
-• Monitoreo trimestral"""
+Requiere mejoras programadas (30 días)."""
         elif punt >= 4:
             return f"""DICTAMEN ERGONÓMICO ROSA - RIESGO BAJO
 
-Puntuación ROSA {punt}/10 - Riesgo BAJO.
-
-Recomendaciones:
-• Ajustes menores en el puesto
-• Pausas activas cada 2 horas
-• Auditoría ergonómica semestral"""
+Ajustes menores en el puesto."""
         else:
             return f"""DICTAMEN ERGONÓMICO ROSA - RIESGO ACEPTABLE
 
-Puesto de oficina en condiciones aceptables.
+Puesto de oficina en condiciones aceptables."""
+    
+    else:  # OWAS
+        codigo = resultados.get('codigo_owas', '1121')
+        nivel = resultados.get('riesgo_max', 1)
+        peso_carga = resultados.get('peso_carga', 0)
+        angulo_espalda = resultados.get('angulo_espalda', 0)
+        
+        if nivel == 1:
+            return f"""DICTAMEN ERGONÓMICO OWAS - RIESGO BAJO
+
+El operario {nombre} presenta código OWAS {codigo} - RIESGO BAJO.
+
+✅ No hay exposición dañina. Las posturas son aceptables.
 
 Recomendaciones preventivas:
-• Mantener buenas prácticas
-• Pausas activas cada 2 horas
+• Mantener pausas activas
 • Auditoría anual"""
-    
-    return "No se pudo generar dictamen. Consulte a un especialista en ergonomía."
+        
+        elif nivel == 2:
+            return f"""DICTAMEN ERGONÓMICO OWAS - RIESGO MODERADO
+
+Código {codigo} - Riesgo MODERADO.
+
+Recomendaciones:
+• Ajustar alturas de trabajo
+• Monitoreo trimestral"""
+        
+        elif nivel == 3:
+            return f"""DICTAMEN ERGONÓMICO OWAS - RIESGO ALTO
+
+Código {codigo} - Riesgo ALTO. Intervención en 30 días.
+
+Recomendaciones:
+• Rediseñar el puesto
+• Pausas activas cada 45 minutos"""
+        
+        else:
+            return f"""DICTAMEN ERGONÓMICO OWAS - RIESGO CRÍTICO
+
+¡INTERVENCIÓN INMEDIATA REQUERIDA!
+Código {codigo} - Riesgo CRÍTICO.
+
+Recomendaciones URGENTES:
+• Suspender tarea hasta evaluación
+• Rediseño completo del puesto
+• Evaluación médica inmediata"""
 
 
 # ==================== FUNCIONES DE ÁNGULOS PARA YOLO POSE ====================
 
-# NOTA: obtener_punto(), calcular_angulo_2d(), clasificar_riesgo_owas()
-# ahora se importan desde Methods.comunes
-
-
 def calcular_flexion_espalda_yolo(keypoints):
-    """Calcula la flexión de espalda usando puntos YOLO"""
     hombro = obtener_punto(keypoints, 5)
     cadera = obtener_punto(keypoints, 11)
     rodilla = obtener_punto(keypoints, 13)
@@ -519,7 +470,6 @@ def calcular_flexion_espalda_yolo(keypoints):
 
 
 def calcular_elevacion_brazo_yolo(keypoints, lado="izquierdo"):
-    """Calcula la elevación del brazo respecto al tronco"""
     if lado == "izquierdo":
         hombro = obtener_punto(keypoints, 5)
         muneca = obtener_punto(keypoints, 9)
@@ -546,7 +496,6 @@ def calcular_elevacion_brazo_yolo(keypoints, lado="izquierdo"):
 
 
 def detectar_postura_piernas_yolo(angulo_rodilla, cadera, rodilla, tobillo):
-    """Detecta postura de piernas basado en ángulo de rodilla"""
     if cadera is None or rodilla is None:
         return 2, "De pie", "Parado piernas rectas", 1
     diferencia_cadera_rodilla = rodilla[1] - cadera[1]
@@ -561,7 +510,6 @@ def detectar_postura_piernas_yolo(angulo_rodilla, cadera, rodilla, tobillo):
 
 
 def calcular_nivel_accion_owas(stats):
-    """Calcula el nivel de acción global según la tabla de frecuencia relativa OWAS"""
     nivel_maximo = 0
     for nivel in [4, 3, 2, 1]:
         if stats.get(nivel, 0) > 0:
@@ -610,26 +558,20 @@ def calcular_nivel_accion_owas(stats):
 # ==================== FUNCIONES PARA RULA ====================
 
 def obtener_angulos_rula(keypoints):
-    """Extrae los ángulos necesarios para RULA desde keypoints de YOLO"""
-    # Puntos para brazo izquierdo (usamos izquierdo por defecto)
     hombro_izq = obtener_punto(keypoints, 5)
     codo_izq = obtener_punto(keypoints, 7)
     muneca_izq = obtener_punto(keypoints, 9)
     
-    # Ángulo de brazo (hombro)
     angulo_brazo = 0
     if hombro_izq and codo_izq and muneca_izq:
         angulo_brazo = calcular_angulo_2d(hombro_izq, codo_izq, muneca_izq)
     
-    # Ángulo de antebrazo (codo)
     angulo_antebrazo = 0
     if hombro_izq and codo_izq and muneca_izq:
         angulo_antebrazo = calcular_angulo_2d(hombro_izq, codo_izq, muneca_izq)
     
-    # Ángulo de muñeca (simplificado)
     angulo_muneca = 0
     
-    # Ángulo de cuello
     nariz = obtener_punto(keypoints, 0)
     hombro_izq = obtener_punto(keypoints, 5)
     hombro_der = obtener_punto(keypoints, 6)
@@ -640,7 +582,6 @@ def obtener_angulos_rula(keypoints):
         punto_arriba = (nariz[0], nariz[1] - 50)
         angulo_cuello = calcular_angulo_2d(punto_arriba, base_cuello, nariz)
     
-    # Ángulo de tronco
     cadera_izq = obtener_punto(keypoints, 11)
     cadera_der = obtener_punto(keypoints, 12)
     angulo_tronco = 0
@@ -662,17 +603,14 @@ def obtener_angulos_rula(keypoints):
 
 
 def procesar_frame_rula(keypoints, frame, contador_frames):
-    """Procesa un frame con el método RULA"""
     from Methods.metodologias.rula import evaluar_rula
     
-    # Evaluar RULA
     resultado_rula = evaluar_rula(keypoints)
     
     puntuacion = resultado_rula['puntuacion_final']
     nivel = resultado_rula['nivel_riesgo']
     accion = resultado_rula['accion']
     
-    # Mostrar en consola si riesgo es medio/alto
     if puntuacion >= 5:
         print(f"\n⚠️ Frame {contador_frames} - RULA: {puntuacion}/7 - {nivel}")
         print(f"   {accion}")
@@ -683,9 +621,7 @@ def procesar_frame_rula(keypoints, frame, contador_frames):
 def generar_reporte_rula(resultados_rula, empresa_input, puesto_input, evaluador_input, 
                           op_nombre, op_edad, op_antiguedad, op_patologias,
                           logo_path, imagenes_riesgo, muestras_posturales):
-    """Genera reporte específico para RULA con Gemini"""
     
-    # Calcular estadísticas de puntuaciones RULA
     puntuaciones = [r['puntuacion_final'] for r in resultados_rula if r is not None]
     
     if puntuaciones:
@@ -708,10 +644,8 @@ def generar_reporte_rula(resultados_rula, empresa_input, puesto_input, evaluador
         puntuacion_max = 0
         puntuacion_prom = 0
     
-    # Buscar el frame con peor puntuación
     peor_frame = max(resultados_rula, key=lambda x: x['puntuacion_final'] if x else 0) if resultados_rula else None
     
-    # Generar dictamen con Gemini para RULA
     print("\n🤖 Generando dictamen experto con IA para RULA...")
     operario_dictamen = {
         'nombre': op_nombre,
@@ -734,7 +668,6 @@ def generar_reporte_rula(resultados_rula, empresa_input, puesto_input, evaluador
     )
     print("✅ Dictamen generado correctamente")
     
-    # Preparar datos para el PDF
     analisis_f = [
         {"segmento": "Puntuación RULA", "angulo": f"{puntuacion_max}/7", "estado": peor_frame['nivel_riesgo'] if peor_frame else "N/A"},
         {"segmento": "Promedio", "angulo": f"{puntuacion_prom}", "estado": "RULA"},
@@ -789,9 +722,8 @@ os.makedirs('reports', exist_ok=True)
 os.makedirs('capturas_riesgo', exist_ok=True)
 
 
-# ==================== CÓDIGO PRINCIPAL (solo se ejecuta si es script principal) ====================
+# ==================== CÓDIGO PRINCIPAL ====================
 if __name__ == "__main__":
-    # ==================== SELECCIÓN DE TIPO DE ENTRADA (FOTO o VIDEO) ====================
     print("=" * 60)
     print("             ERGOEDGE OS - SISTEMA DE ANÁLISIS ERGONÓMICO")
     print("=" * 60)
@@ -810,7 +742,6 @@ if __name__ == "__main__":
         except ValueError:
             print("❌ Ingrese un número válido (1 o 2).")
 
-    # ==================== MENÚ DE SELECCIÓN DE MÉTODO ====================
     print("\n📋 MÉTODOS DISPONIBLES:")
     print("   1. OWAS - Ovako Working Posture Analysis (cuerpo completo)")
     print("   2. RULA - Rapid Upper Limb Assessment (miembros superiores)")
@@ -865,12 +796,10 @@ if __name__ == "__main__":
     if not op_patologias:
         op_patologias = "Ninguna informada"
 
-       # ==================== CARGA DEL MODELO YOLO ====================
     print("\n📥 Cargando modelo YOLO11 Pose...")
     import torch
     from ultralytics import YOLO
 
-    # --- INICIO DE LA SOLUCIÓN DEFINITIVA ---
     print("   Aplicando fix de compatibilidad para PyTorch 2.6...")
     try:
         from ultralytics.nn.tasks import PoseModel
@@ -878,7 +807,6 @@ if __name__ == "__main__":
         print("   ✅ Safe globals configurado correctamente.")
     except Exception as e:
         print(f"   ⚠️ Advertencia: No se pudo configurar safe globals: {e}")
-    # --- FIN DE LA SOLUCIÓN ---
 
     try:
         modelo_yolo = YOLO('yolo11x-pose.pt')
@@ -890,9 +818,7 @@ if __name__ == "__main__":
         print(f"❌ Error fatal cargando el modelo: {e}")
         exit()
 
-    # ==================== CARGA DE ENTRADA (VIDEO o FOTO) ====================
     if tipo_entrada == 1:
-        # Modo VIDEO
         video_path = input("\n📹 Ruta del video (test.mp4 por defecto): ").strip()
         if not video_path:
             video_path = "test.mp4"
@@ -904,7 +830,6 @@ if __name__ == "__main__":
         modo_video = True
         print(f"\n🎬 Procesando VIDEO: {video_path}")
     else:
-        # Modo FOTO
         foto_path = input("\n📷 Ruta de la foto (jpg, png): ").strip()
         if not foto_path:
             foto_path = "test.jpg"
@@ -921,7 +846,6 @@ if __name__ == "__main__":
     frames_con_persona = 0
     frame_counter = 0
 
-    # Variables OWAS (solo se usan si metodo_elegido == 1)
     if metodo_elegido == 1:
         peor_riesgo_nivel = 0
         datos_peor_momento = None
@@ -933,16 +857,14 @@ if __name__ == "__main__":
         historial_evolucion = []
         mejores_momentos = []
         ultimo_frame_procesado = -30
-        keypoints_anterior = None  # variable para frame anterior
+        keypoints_anterior = None
 
-    # Variables RULA (solo se usan si metodo_elegido == 2)
     if metodo_elegido == 2:
         resultados_rula = []
         mejores_momentos_rula = []
         imagenes_riesgo = []
         muestras_posturales = []
 
-    # Variables REBA (solo se usan si metodo_elegido == 3)
     if metodo_elegido == 3:
         resultados_reba = []
         mejores_momentos_reba = []
@@ -952,7 +874,6 @@ if __name__ == "__main__":
         acople = 0
         reba_calc = None
 
-    # Variables ROSA (solo se usan si metodo_elegido == 4)
     if metodo_elegido == 4:
         datos_rosa = None
         resultado_rosa = None
@@ -971,7 +892,6 @@ if __name__ == "__main__":
     else:
         print("📐 Aplicando método ROSA (Rapid Office Strain Assessment)")
 
-    # ==================== FUNCIÓN PARA PROCESAR UN FRAME ====================
     def procesar_frame(frame, frame_num, is_foto=False):
         global frames_con_persona, peor_riesgo_nivel, angulo_espalda_peor, angulo_brazo_peor
         global datos_peor_momento, conteo_riesgos, historial_evolucion, mejores_momentos
@@ -986,7 +906,7 @@ if __name__ == "__main__":
             frames_con_persona += 1
             keypoints = results[0].keypoints.data[0].cpu().numpy()
 
-            if metodo_elegido == 1:  # OWAS
+            if metodo_elegido == 1:
                 hombro = obtener_punto(keypoints, 5)
                 cadera = obtener_punto(keypoints, 11)
                 rodilla = obtener_punto(keypoints, 13)
@@ -1009,7 +929,6 @@ if __name__ == "__main__":
                     codigo_espalda = 4
                     estado_espalda = "Extrema"
 
-                # ========== TORSIÓN AVANZADA ==========
                 hombro_izq_punto = obtener_punto(keypoints, 5)
                 hombro_der_punto = obtener_punto(keypoints, 6)
                 cadera_izq_punto = obtener_punto(keypoints, 11)
@@ -1022,7 +941,6 @@ if __name__ == "__main__":
                     codigo_espalda = min(codigo_espalda + torsion_data['incremento'], 4)
                     print(f"   🔄 Torsión: {torsion_data['angulo']}° hacia {torsion_data['direccion']} (+{torsion_data['incremento']})")
                 
-                # ========== CARGA DINÁMICA ==========
                 carga_data = detectar_carga_dinamica(keypoints, keypoints_anterior, codigo_carga_constante)
                 codigo_carga = carga_data['codigo_carga']
                 estado_carga = carga_data['descripcion']
@@ -1150,10 +1068,9 @@ if __name__ == "__main__":
                 cv2.putText(frame_display, f"Rodilla: {int(angulo_rodilla)}°", (10, 120),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
 
-                # Guardar keypoints para el próximo frame
                 keypoints_anterior = keypoints.copy()
 
-            elif metodo_elegido == 2:  # RULA
+            elif metodo_elegido == 2:
                 resultado_rula = evaluar_rula(keypoints)
                 resultados_rula.append(resultado_rula)
                 
@@ -1208,7 +1125,7 @@ if __name__ == "__main__":
                 cv2.putText(frame_display, f"Tronco: {tronco_score}/4", (10, 96),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
 
-            elif metodo_elegido == 3:  # REBA
+            elif metodo_elegido == 3:
                 if reba_calc is None:
                     reba_calc = RebaCalculator()
                     print("\n📋 DATOS MANUALES REQUERIDOS PARA REBA:")
@@ -1270,10 +1187,6 @@ if __name__ == "__main__":
         
         return frame_display
 
-
-    # ==================== BUCLE PRINCIPAL ====================
-
-    # Para ROSA, es un caso especial (basado en cuestionario)
     if metodo_elegido == 4:
         print("\n📋 Recopilando datos para evaluación ROSA...")
         datos_rosa = recopilar_datos_rosa_interactivo()
@@ -1290,7 +1203,6 @@ if __name__ == "__main__":
         print(f"   NIVEL DE RIESGO: {resultado_rosa['nivel_riesgo']}")
         print(f"   ACCIÓN: {resultado_rosa['accion']}")
         
-        # Generar dictamen con Gemini para ROSA
         print("\n🤖 Generando dictamen experto con IA para ROSA...")
         operario_dictamen = {
             'nombre': op_nombre,
@@ -1310,16 +1222,13 @@ if __name__ == "__main__":
         )
         print(f"\n📋 DICTAMEN EXPERTO (IA Gemini):\n{dictamen_rosa}")
         
-        # Guardar dictamen en resultado_rosa para el PDF
         resultado_rosa['dictamen_ia'] = dictamen_rosa
         
-        # Mostrar recomendaciones originales también
         print("\n📋 RECOMENDACIONES (automáticas):")
         for rec in resultado_rosa['recomendaciones']:
             print(f"   {rec}")
         print("=" * 60)
         
-        # Generar reporte PDF para ROSA
         print("\n📄 Generando reporte PDF para ROSA...")
         from Methods.reports import generar_reporte_rosa
         generar_reporte_rosa(
@@ -1329,9 +1238,7 @@ if __name__ == "__main__":
         )
         
     else:
-        # Procesamiento para OWAS, RULA, REBA
         if modo_video:
-            # Modo VIDEO - bucle de frames
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
@@ -1364,30 +1271,22 @@ if __name__ == "__main__":
             cap.release()
             cv2.destroyAllWindows()
             
-            # Usar el último frame para casos donde no se detectaron personas
             if frames_con_persona == 0 and 'frame' in locals():
                 print("\n⚠️ No se detectaron personas en el video. Verifique la calidad del video.")
         else:
-            # Modo FOTO - procesar una sola imagen
             print("\n🖼️ Procesando foto...")
             frame_display = procesar_frame(frame, 1, is_foto=True)
             
-            # Mostrar resultado en ventana
             cv2.imshow("ERGOEDGE OS - YOLO11 POSE (FOTO)", frame_display)
             print("\n📸 Presione cualquier tecla para continuar...")
             cv2.waitKey(0)
             cv2.destroyAllWindows()
             
-            # Para foto, el contador de frames es 1
             contador_frames = 1
-            # Si no se detectó persona, mostrar advertencia
             if frames_con_persona == 0:
                 print("\n⚠️ No se detectó ninguna persona en la foto. Verifique la calidad de la imagen.")
 
-    # ==================== POST-PROCESAMIENTO Y REPORTE ====================
-
     if metodo_elegido == 1:
-        # ==================== POST-PROCESAMIENTO OWAS ====================
         print("\n📸 Capturando evidencias de los momentos de mayor riesgo...")
 
         if mejores_momentos:
@@ -1548,8 +1447,7 @@ if __name__ == "__main__":
                 print("   No se detectó ninguna persona en la imagen/video.")
                 print("   Verifique la calidad de la imagen/video.")
 
-    elif metodo_elegido == 2:  # RULA
-        # ==================== POST-PROCESAMIENTO RULA ====================
+    elif metodo_elegido == 2:
         print("\n📸 Capturando evidencias de los momentos de mayor riesgo RULA...")
 
         if mejores_momentos_rula:
@@ -1611,7 +1509,6 @@ if __name__ == "__main__":
                 print(f"🎯 Puntuación RULA máxima: {punt_max}/7")
                 print(f"📊 Puntuación RULA promedio: {punt_prom}/7")
                 
-                # Estadísticas por nivel
                 niveles = {}
                 for r in resultados_rula:
                     nivel = r['nivel_riesgo']
@@ -1623,7 +1520,6 @@ if __name__ == "__main__":
                     barra = "█" * int(pct / 2)
                     print(f"   {nivel}: {pct:5.1f}% {barra}")
         
-        # Generar reporte RULA
         if resultados_rula and frames_con_persona > 0:
             generar_reporte_rula(resultados_rula, empresa_input, puesto_input, evaluador_input,
                                   op_nombre, op_edad, op_antiguedad, op_patologias,
@@ -1633,8 +1529,7 @@ if __name__ == "__main__":
             if frames_con_persona == 0:
                 print("   No se detectó ninguna persona en la imagen/video.")
 
-    elif metodo_elegido == 3:  # REBA
-        # ==================== POST-PROCESAMIENTO REBA ====================
+    elif metodo_elegido == 3:
         print("\n📸 Capturando evidencias de los momentos de mayor riesgo REBA...")
 
         if mejores_momentos_reba:
@@ -1695,7 +1590,6 @@ if __name__ == "__main__":
                 print(f"🎯 Puntuación REBA máxima: {punt_max}/15")
                 print(f"📊 Puntuación REBA promedio: {punt_prom}/15")
                 
-                # Estadísticas por nivel
                 niveles = {}
                 for r in resultados_reba:
                     nivel = r['nivel_riesgo']
@@ -1707,7 +1601,6 @@ if __name__ == "__main__":
                     barra = "█" * int(pct / 2)
                     print(f"   {nivel}: {pct:5.1f}% {barra}")
                 
-                # Mostrar detalles del peor momento
                 peor = max(resultados_reba, key=lambda x: x['puntuacion_final'])
                 print(f"\n📋 DETALLES DEL PEOR MOMENTO:")
                 print(f"   Puntuación A (Tronco+Cuello+Piernas): {peor['puntuacion_A']}")
@@ -1716,7 +1609,6 @@ if __name__ == "__main__":
                 print(f"   Abducción máxima detectada: {peor['detalles']['abduccion']:.1f}°")
                 print(f"   Torsión de tronco: {'Sí' if peor['detalles']['torsion'] else 'No'}")
         
-        # Generar reporte REBA
         if resultados_reba and frames_con_persona > 0:
             from Methods.reports import generar_reporte_reba
             generar_reporte_reba(resultados_reba, empresa_input, puesto_input, evaluador_input,
@@ -1728,9 +1620,7 @@ if __name__ == "__main__":
             if frames_con_persona == 0:
                 print("   No se detectó ninguna persona en la imagen/video.")
 
-    else:  # metodo_elegido == 4 - ROSA
-        # ==================== POST-PROCESAMIENTO ROSA ====================
-        # ROSA ya mostró resultados y generó el reporte PDF durante el procesamiento
+    else:
         print("\n✅ ROSA completado. El reporte PDF se ha generado con dictamen IA.")
 
     print("\n✨ Proceso completado")
